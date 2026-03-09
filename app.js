@@ -2547,13 +2547,6 @@ async function refreshAll() {
   loadCSV("weeklyUpdates", CSV.weeklyUpdates)
 ]);
 
-    let weeklyUpdatesRaw = [];
-    try {
-      weeklyUpdatesRaw = await loadCSV("weeklyUpdates", CSV.weeklyUpdates);
-    } catch (error) {
-      weeklyUpdatesRaw = [];
-    }
-
     state.allOverviewRows = overviewRows || [];
     state.roleStatusByRole = {};
     (state.allOverviewRows || []).forEach(r => {
