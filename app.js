@@ -38,7 +38,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Default selection should start with the current calendar week if present in data.
   const PREFERRED_KW = CURRENT_ISO.kw;
   const PREFERRED_YEAR = CURRENT_ISO.year;
-
+const PROTECTED_PASSWORD = "Personio2026";
+  
   const CSV = {
   overview: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaty-Up3n29kb7kp66CKNU5nCHg-GvMmM3ouXpwYgvEJmtMutMtQtoTVmH0dnN1aEL3vhIfNsXneaM/pub?gid=105684583&single=true&output=csv",
   pipelineWeekly: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaty-Up3n29kb7kp66CKNU5nCHg-GvMmM3ouXpwYgvEJmtMutMtQtoTVmH0dnN1aEL3vhIfNsXneaM/pub?gid=1333902667&single=true&output=csv",
@@ -59,8 +60,8 @@ document.addEventListener("DOMContentLoaded", () => {
   weeklyUpdates: "weekly_updates"
 };
 
-  const HIRES_PASSWORD = "EGYM2026";
-  const MANAGEMENT_PASSWORD = "EGYM2026";
+  const HIRES_PASSWORD = "Personio2026";
+  const MANAGEMENT_PASSWORD = "Personio2026";
 const MANAGEMENT_UNLOCK_KEY = "management_unlocked";
   const VIEW_STORAGE_KEY = "dashboard_view";
   const DEPARTMENT_STORAGE_KEY = "selected_department";
