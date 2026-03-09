@@ -1202,18 +1202,28 @@ function getHealthByRoleFromInventory(inventoryRows, selectedWeekKey, filters = 
 function initTabs() {
   const tabs = document.querySelectorAll(".tab");
 
-  function canOpenTab(id) {
-    if (id !== "hires") return true;
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.tab || "overview";
+      window.location.hash = id;
+      activateTab(id);
 
-    const unlocked = localStorage.getItem(HIRES_UNLOCK_KEY) === "1";
-    if (unlocked) return true;
+      if (id === "hires") renderHires();
+    });
+  });
 
-    const input = window.prompt("Enter password to access Hires & KPIs:");
-    if (input !== HIRES_PASSWORD) return false;
+  window.addEventListener("hashchange", () => {
+    const id = window.location.hash.replace("#", "") || "overview";
+    activateTab(id);
 
-    localStorage.setItem(HIRES_UNLOCK_KEY, "1");
-    return true;
-  }
+    if (id === "hires") renderHires();
+  });
+
+  const initialId = window.location.hash.replace("#", "") || "overview";
+  activateTab(initialId);
+
+  if (initialId === "hires") renderHires();
+}
 
   tabs.forEach(btn => {
     btn.addEventListener("click", () => {
