@@ -38,7 +38,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Default selection should start with the current calendar week if present in data.
   const PREFERRED_KW = CURRENT_ISO.kw;
   const PREFERRED_YEAR = CURRENT_ISO.year;
-const PROTECTED_PASSWORD = "Personio2026";
   
   const CSV = {
   overview: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRaty-Up3n29kb7kp66CKNU5nCHg-GvMmM3ouXpwYgvEJmtMutMtQtoTVmH0dnN1aEL3vhIfNsXneaM/pub?gid=105684583&single=true&output=csv",
@@ -87,8 +86,6 @@ const MANAGEMENT_UNLOCK_KEY = "management_unlocked";
     allHiredRows: [],
     hiredRows: [],
     roleTargets: [],
-    allRoleNotesRows: [],
-    roleNotesRows: [],
     allWeeklyUpdatesRows: [],
     weeklyUpdatesRows: [],
     roleStatusByRole: {},   // role -> normalized status (open/on_hold/...)
@@ -177,7 +174,7 @@ const MANAGEMENT_UNLOCK_KEY = "management_unlocked";
     return ordered;
   }
 
-  function buildDepartmentOptions({ overviewRows, pipelineWeeklyRows, pipelineInventoryRows, sourcingRows, hiredRows, roleNotesRows, weeklyUpdatesRows }) {
+  function buildDepartmentOptions({ overviewRows, pipelineWeeklyRows, pipelineInventoryRows, sourcingRows, hiredRows, weeklyUpdatesRows }) {
     const overviewList = getDepartmentList(overviewRows);
     const options = [...overviewList];
     const seen = new Set(overviewList.map(item => item.toLowerCase()));
@@ -196,14 +193,12 @@ const MANAGEMENT_UNLOCK_KEY = "management_unlocked";
       addRows(pipelineInventoryRows);
       addRows(sourcingRows);
       addRows(hiredRows);
-      addRows(roleNotesRows);
       addRows(weeklyUpdatesRows);
     } else {
       addRows(pipelineWeeklyRows);
       addRows(pipelineInventoryRows);
       addRows(sourcingRows);
       addRows(hiredRows);
-      addRows(roleNotesRows);
       addRows(weeklyUpdatesRows);
     }
 
@@ -237,18 +232,14 @@ function filterRowsByDepartment(rows) {
   );
 }
 
- function applyDepartmentSelection() {
+function applyDepartmentSelection() {
   state.overviewRows = filterRowsByDepartment(state.allOverviewRows);
   state.pipelineWeeklyRows = filterRowsByDepartment(state.allPipelineWeeklyRows);
   state.pipelineInventoryRows = filterRowsByDepartment(state.allPipelineInventoryRows);
   state.sourcingRows = filterRowsByDepartment(state.allSourcingRows);
 
-  // ✅ IMPORTANT: hired_data is often department-less.
-  // Keep hires unfiltered; department relevance is implied by role via overviewRows.
+  // hired_data is often department-less.
   state.hiredRows = state.allHiredRows || [];
-
-  // These may also be department-less; if you want them filtered later, we can add role-based filtering
-  state.roleNotesRows = filterRowsByDepartment(state.allRoleNotesRows);
   state.weeklyUpdatesRows = filterRowsByDepartment(state.allWeeklyUpdatesRows);
 }
 
@@ -982,18 +973,6 @@ state.pipelineInventoryStageOrder = getStageOrderFromRows(rows, coreKeys)
     })).filter(r => r.role);
   }
 
-  function normalizeRoleNotes(rows) {
-    return rows.map(r => ({
-      role: getField(r, ["role"]),
-      kw: num(getField(r, ["kw"])),
-      year: num(getField(r, ["year"])),
-      recruiter: getField(r, ["recruiter"]),
-      department: getField(r, ["department"]),
-      challenges: getField(r, ["challenges"]),
-      highlights: getField(r, ["highlights"]),
-      big_wins: getField(r, ["big_wins"])
-    })).filter(r => r.role && r.kw);
-  }
 
   function normalizeWeeklyUpdates(rows) {
     return rows.map(r => ({
@@ -1218,30 +1197,49 @@ function getHealthByRoleFromInventory(inventoryRows, selectedWeekKey, filters = 
     panels.forEach(p => p.classList.toggle("active", p.id === target));
   }
 
-  function initTabs() {
-    const tabs = document.querySelectorAll(".tab");
-    let hiresUnlocked = false;
+function initTabs() {
+  const tabs = document.querySelectorAll(".tab");
+  let hiresUnlocked = false;
 
-    tabs.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.tab;
-        if (id === "hires" && !hiresUnlocked) {
-          const input = window.prompt("Enter password to access Hires & KPIs:");
-          if (input !== HIRES_PASSWORD) return;
-          hiresUnlocked = true;
-        }
-        window.location.hash = id;
-        activateTab(id);
-      });
-    });
+  function canOpenTab(id) {
+    if (id !== "hires") return true;
+    if (hiresUnlocked) return true;
 
-    window.addEventListener("hashchange", () => {
-      const id = window.location.hash.replace("#", "") || "overview";
+    const input = window.prompt("Enter password to access Hires & KPIs:");
+    if (input !== HIRES_PASSWORD) return false;
+
+    hiresUnlocked = true;
+    return true;
+  }
+
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.tab || "overview";
+      if (!canOpenTab(id)) return;
+
+      window.location.hash = id;
       activateTab(id);
     });
+  });
 
-    activateTab(window.location.hash.replace("#", "") || "overview");
+  window.addEventListener("hashchange", () => {
+    const id = window.location.hash.replace("#", "") || "overview";
+    if (!canOpenTab(id)) {
+      window.location.hash = "overview";
+      activateTab("overview");
+      return;
+    }
+    activateTab(id);
+  });
+
+  const initialId = window.location.hash.replace("#", "") || "overview";
+  if (!canOpenTab(initialId)) {
+    window.location.hash = "overview";
+    activateTab("overview");
+  } else {
+    activateTab(initialId);
   }
+}
 
  /* ---------------- RENDER: OVERVIEW ---------------- */
 
@@ -1892,7 +1890,6 @@ function renderManagement() {
   const hiredRows = state.hiredRows || [];
   const weeklyRows = state.pipelineWeeklyRows || [];
   const inventoryRows = state.pipelineInventoryRows || [];
-  const roleNotesRows = state.roleNotesRows || [];
   const weeklyUpdatesRows = state.weeklyUpdatesRows || [];
 
   const selectedActivityWeek = state.selectedActivityWeek || "";
@@ -1976,14 +1973,6 @@ const healthByRole = getHealthByRoleFromInventory(
 
   renderManagementRecruiters({ weeklyRows });
 
-  renderManagementRoleInsights({
-    roleNotesRows,
-    selectedActivityWeek,
-    selectedRole,
-    selectedRecruiter,
-    healthByRole
-  });
-
   renderManagementWeeklyUpdates({ weeklyUpdatesRows, selectedRole });
   renderManagementForecast({ inventoryRows, overviewRows, hiredRows, weeklyRows });
 }
@@ -2049,25 +2038,6 @@ function renderManagementRecruiters({ weeklyRows }) {
   });
 }
 
-function renderManagementRoleInsights({ roleNotesRows, selectedActivityWeek, selectedRole, selectedRecruiter, healthByRole }) {
-  const container = $("managementRoleInsights");
-  if (!container) return;
-
-  const selectedWeek = getWeekYearFromKey(selectedActivityWeek);
-  const hasWeekFilter = selectedActivityWeek !== "all" && selectedWeek;
-  const hasRecruiter = roleNotesRows.some(r => r.recruiter);
-
-  const grouped = new Map();
-  roleNotesRows.forEach(row => {
-    if (hasWeekFilter) {
-      if (row.year !== selectedWeek.year || row.kw !== selectedWeek.kw) return;
-    }
-    if (selectedRole !== "all" && row.role !== selectedRole) return;
-    if (hasRecruiter && selectedRecruiter !== "all" && row.recruiter !== selectedRecruiter) return;
-
-    if (!grouped.has(row.role)) grouped.set(row.role, []);
-    grouped.get(row.role).push(row);
-  });
 
   const cards = [];
   grouped.forEach((rows, role) => {
@@ -2622,22 +2592,22 @@ function fmtDate(d = new Date()) {
 async function refreshAll() {
   try {
     const [
-      overviewRows,
-      pipelineWeeklyRaw,
-      pipelineInventoryRaw,
-      sourcingRaw,
-      hiredRaw,
-      targetsRaw,
-      roleNotesRaw
-    ] = await Promise.all([
-      loadCSV("overview", CSV.overview),
-      loadCSV("pipelineWeekly", CSV.pipelineWeekly),
-      loadCSV("pipelineInventory", CSV.pipelineInventory),
-      loadCSV("sourcing", CSV.sourcing),
-      loadCSV("hired", CSV.hired),
-      loadCSV("roleTargets", CSV.roleTargets),
-      loadCSV("roleNotes", CSV.roleNotes)
-    ]);
+  overviewRows,
+  pipelineWeeklyRaw,
+  pipelineInventoryRaw,
+  sourcingRaw,
+  hiredRaw,
+  targetsRaw,
+  weeklyUpdatesRaw
+] = await Promise.all([
+  loadCSV("overview", CSV.overview),
+  loadCSV("pipelineWeekly", CSV.pipelineWeekly),
+  loadCSV("pipelineInventory", CSV.pipelineInventory),
+  loadCSV("sourcing", CSV.sourcing),
+  loadCSV("hired", CSV.hired),
+  loadCSV("roleTargets", CSV.roleTargets),
+  loadCSV("weeklyUpdates", CSV.weeklyUpdates)
+]);
 
     let weeklyUpdatesRaw = [];
     try {
@@ -2662,18 +2632,16 @@ async function refreshAll() {
     state.allSourcingRows = normalizeSourcing(sourcingRaw || []);
     state.allHiredRows = hiredRaw || [];
     state.roleTargets = normalizeTargets(targetsRaw || []);
-    state.allRoleNotesRows = normalizeRoleNotes(roleNotesRaw || []);
     state.allWeeklyUpdatesRows = normalizeWeeklyUpdates(weeklyUpdatesRaw || []);
 
-    state.departmentOptions = buildDepartmentOptions({
-      overviewRows: state.allOverviewRows,
-      pipelineWeeklyRows: state.allPipelineWeeklyRows,
-      pipelineInventoryRows: state.allPipelineInventoryRows,
-      sourcingRows: state.allSourcingRows,
-      hiredRows: state.allHiredRows,
-      roleNotesRows: state.allRoleNotesRows,
-      weeklyUpdatesRows: state.allWeeklyUpdatesRows
-    });
+   state.departmentOptions = buildDepartmentOptions({
+  overviewRows: state.allOverviewRows,
+  pipelineWeeklyRows: state.allPipelineWeeklyRows,
+  pipelineInventoryRows: state.allPipelineInventoryRows,
+  sourcingRows: state.allSourcingRows,
+  hiredRows: state.allHiredRows,
+  weeklyUpdatesRows: state.allWeeklyUpdatesRows
+});
 
    const storedDepartment = localStorage.getItem(DEPARTMENT_STORAGE_KEY);
 const storedMatch = state.departmentOptions.find(
