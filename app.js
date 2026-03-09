@@ -65,7 +65,8 @@ const MANAGEMENT_PASSWORD = "Personio2026";
 const HIRES_UNLOCK_KEY = "hires_unlocked";
 const MANAGEMENT_UNLOCK_KEY = "management_unlocked";
   const VIEW_STORAGE_KEY = "dashboard_view";
-  const DEPARTMENT_STORAGE_KEY = "selected_department";
+const DEPARTMENT_STORAGE_KEY = "selected_department";
+const TAB_STORAGE_KEY = "active_tab";
 
     const state = {
     view: "contributor",
@@ -1190,6 +1191,8 @@ function activateTab(tabId) {
   const panels = document.querySelectorAll("#contributorView .panel");
   const target = tabId || "overview";
 
+  localStorage.setItem(TAB_STORAGE_KEY, target);
+
   tabs.forEach(t => {
     const active = t.dataset.tab === target;
     t.classList.toggle("active", active);
@@ -1225,8 +1228,10 @@ function initTabs() {
     }
   });
 
-  const initialId = window.location.hash.replace("#", "") || "overview";
-  activateTab(initialId);
+const initialId =
+  window.location.hash.replace("#", "") ||
+  localStorage.getItem(TAB_STORAGE_KEY) ||
+  "overview";  activateTab(initialId);
 
   if (initialId === "hires") {
     renderHires();
