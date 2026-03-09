@@ -2038,68 +2038,6 @@ function renderManagementRecruiters({ weeklyRows }) {
   });
 }
 
-
-  const cards = [];
-  grouped.forEach((rows, role) => {
-    const notes = { challenges: [], highlights: [] };
-
-    rows.forEach(r => {
-      const addNotes = (value, key) => {
-        if (!value) return;
-        String(value)
-          .split(/[\n\r|]+/)
-          .map(item => item.trim())
-          .filter(Boolean)
-          .forEach(item => notes[key].push(item));
-      };
-      addNotes(r.challenges, "challenges");
-      addNotes(r.highlights, "highlights");
-    });
-
-    if (!notes.challenges.length && !notes.highlights.length) return;
-
-    const health = healthByRole[role] || "unknown";
-    cards.push({ role, health, notes });
-  });
-
-  const order = { critical: 0, warning: 1, healthy: 2, unknown: 3 };
-  cards.sort((a, b) => order[a.health] - order[b.health]);
-
-  if (!cards.length) {
-    container.innerHTML = `<div class="placeholder">No role insights for this week.</div>`;
-    return;
-  }
-
-  container.innerHTML = cards.map(card => {
-    const openAttr = card.health === "critical" || card.health === "warning" ? " open" : "";
-    const healthLabel =
-      card.health === "warning" ? "At risk" :
-      (card.health === "critical" ? "Critical" :
-      (card.health === "healthy" ? "Healthy" : "Unknown"));
-
-    const sectionHtml = (title, items) => {
-      if (!items.length) return "";
-      const list = items.map(item => `<li>${item}</li>`).join("");
-      return `<div class="muted2 small" style="margin-top:8px;">${title}</div><ul>${list}</ul>`;
-    };
-
-    return `
-      <details class="card management-details"${openAttr}>
-        <summary class="card-head">
-          <div>
-            <h3>${card.role}</h3>
-            <p class="muted small">${healthLabel}</p>
-          </div>
-        </summary>
-        <div style="padding:0 18px 18px;">
-          ${sectionHtml("Challenges", card.notes.challenges)}
-          ${sectionHtml("Highlights", card.notes.highlights)}
-        </div>
-      </details>
-    `;
-  }).join("");
-}
-
 function renderManagementWeeklyUpdates({ weeklyUpdatesRows, selectedRole }) {
   const container = $("managementWeeklyUpdates");
   const empty = $("managementUpdatesEmpty");
