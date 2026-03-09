@@ -1808,6 +1808,15 @@ function average(values) {
 
 function renderHires() {
   const rows = state.hiredRows || [];
+
+  console.log("renderHires fired", {
+    rowsLength: rows.length,
+    sampleRow: rows[0],
+    hasTable: !!$("hiresTable"),
+    hasEmpty: !!$("hiresEmpty"),
+    hasKpis: !!$("hiresKpis")
+  });
+
   const tbody = $("hiresTable");
   const empty = $("hiresEmpty");
   const kpis = $("hiresKpis");
