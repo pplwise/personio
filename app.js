@@ -1215,29 +1215,42 @@ function initTabs() {
   tabs.forEach(btn => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.tab || "overview";
-      if (!canOpenTab(id)) return;
+
+      if (!canOpenTab(id)) {
+        window.location.hash = "overview";
+        activateTab("overview");
+        return;
+      }
 
       window.location.hash = id;
       activateTab(id);
+
+      if (id === "hires") renderHires();
     });
   });
 
   window.addEventListener("hashchange", () => {
     const id = window.location.hash.replace("#", "") || "overview";
+
     if (!canOpenTab(id)) {
       window.location.hash = "overview";
       activateTab("overview");
       return;
     }
+
     activateTab(id);
+
+    if (id === "hires") renderHires();
   });
 
   const initialId = window.location.hash.replace("#", "") || "overview";
+
   if (!canOpenTab(initialId)) {
     window.location.hash = "overview";
     activateTab("overview");
   } else {
     activateTab(initialId);
+    if (initialId === "hires") renderHires();
   }
 }
 
