@@ -4,13 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Recruiting Dashboard · Personio</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231f2937'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Inter,Arial,sans-serif' font-size='32' fill='%23ffffff'%3EP%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23edd6f5'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='Inter,Arial,sans-serif' font-size='32' font-weight='700' fill='%235b2a6d'%3EP%3C/text%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
@@ -37,17 +36,15 @@
     <div id="dataErrors" class="banner hidden" aria-live="polite"></div>
 
     <main>
-      <!-- Contributor View -->
       <section id="contributorView">
         <nav class="tabs" aria-label="Dashboard tabs">
           <button class="tab active" data-tab="overview" type="button">Overview</button>
           <button class="tab" data-tab="pipeline" type="button">Pipeline</button>
           <button class="tab" data-tab="activity" type="button">Activity</button>
           <button class="tab" data-tab="sourcing" type="button">Sourcing</button>
-          <button class="tab" data-tab="hires" type="button">Hires & KPIs</button>
+          <button class="tab" data-tab="hires & KPIs" type="button">Hires & KPIs</button>
         </nav>
 
-        <!-- OVERVIEW -->
         <section id="overview" class="panel active">
           <div class="overview-top">
             <div class="card">
@@ -94,7 +91,6 @@
           </div>
         </section>
 
-        <!-- PIPELINE -->
         <section id="pipeline" class="panel">
           <div class="panel-head">
             <div><h2>Pipeline</h2></div>
@@ -120,7 +116,6 @@
           <div class="card">
             <div class="card-head">
               <h3>End-of-week inventory</h3>
-              <p class="muted small">Stages shown for the selected calendar week (or cumulative for All time).</p>
             </div>
 
             <div id="pipelineEmpty" class="placeholder hidden">
@@ -136,7 +131,6 @@
           </div>
         </section>
 
-        <!-- ACTIVITY -->
         <section id="activity" class="panel">
           <div class="panel-head">
             <div><h2>Activity</h2></div>
@@ -167,7 +161,6 @@
           <div class="card">
             <div class="card-head">
               <h3>Weekly stage activity</h3>
-              <p class="muted small">Counts by stage for the selected week (or cumulative for All time).</p>
             </div>
 
             <div class="table-wrap">
@@ -179,7 +172,6 @@
           </div>
         </section>
 
-        <!-- SOURCING -->
         <section id="sourcing" class="panel">
           <div class="panel-head">
             <div><h2>Sourcing</h2></div>
@@ -212,7 +204,6 @@
           <div class="card">
             <div class="card-head">
               <h3>Weekly sourcing</h3>
-              <p class="muted small">By role (or cumulative for All time).</p>
             </div>
 
             <div class="table-wrap">
@@ -232,7 +223,6 @@
           </div>
         </section>
 
-        <!-- HIRES -->
         <section id="hires" class="panel">
           <div class="panel-head">
             <div>
@@ -276,12 +266,10 @@
         </section>
       </section>
 
-      <!-- Management View -->
       <section id="managementView" class="hidden">
         <div class="card">
           <div class="card-head">
-            <h2>Management View</h2>
-            <p class="muted small">Executive rollups across active data sources.</p>
+            <h2>Management Overview</h2>
           </div>
           <div id="managementKpis" class="kpi-grid"></div>
         </div>
@@ -293,12 +281,10 @@
           <div id="managementHealthSummary" class="health-row"></div>
         </div>
 
-        <!-- Hiring Forecast (single clean card) -->
         <div class="card">
           <div class="card-head" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
             <div>
               <h3>Hiring Forecast</h3>
-              <p class="muted small">Horizon: today → end of current month. Step1 = rolling 4W, Finals/Offers = inventory snapshot (selected KW).</p>
             </div>
 
             <label style="min-width:260px;">
@@ -313,7 +299,6 @@
         <div class="card">
           <div class="card-head">
             <h3>Recruiter Utilization</h3>
-            <p class="muted small">Rolling 4 weeks (Step1 screens).</p>
           </div>
           <div id="managementRecruiterEmpty" class="placeholder hidden">No recruiter data available.</div>
           <div class="table-wrap">
@@ -333,7 +318,6 @@
         <div class="card">
           <div class="card-head">
             <h3>Weekly Updates</h3>
-            <p class="muted small">Most recent updates from the last 4 weeks.</p>
           </div>
           <div id="managementUpdatesEmpty" class="placeholder hidden">No updates in the last 4 weeks.</div>
           <div id="managementWeeklyUpdates"></div>
