@@ -1185,19 +1185,21 @@ function getHealthByRoleFromInventory(inventoryRows, selectedWeekKey, filters = 
 
   /* ---------------- TABS ---------------- */
 
-  function activateTab(tabId) {
-    const tabs = document.querySelectorAll(".tab");
-    const panels = document.querySelectorAll("#contributorView .panel");
-    const target = tabId || "overview";
+function activateTab(tabId) {
+  const tabs = document.querySelectorAll(".tab");
+  const panels = document.querySelectorAll("#contributorView .panel");
+  const target = tabId || "overview";
 
-    tabs.forEach(t => {
-      const active = t.dataset.tab === target;
-      t.classList.toggle("active", active);
-      t.setAttribute("aria-selected", String(active));
-    });
+  tabs.forEach(t => {
+    const active = t.dataset.tab === target;
+    t.classList.toggle("active", active);
+    t.setAttribute("aria-selected", String(active));
+  });
 
-    panels.forEach(p => p.classList.toggle("active", p.id === target));
-  }
+  panels.forEach(p => {
+    p.classList.toggle("active", p.id === target);
+  });
+}
 
 function initTabs() {
   const tabs = document.querySelectorAll(".tab");
@@ -1208,7 +1210,9 @@ function initTabs() {
       window.location.hash = id;
       activateTab(id);
 
-      if (id === "hires") renderHires();
+      if (id === "hires") {
+        renderHires();
+      }
     });
   });
 
@@ -1216,13 +1220,17 @@ function initTabs() {
     const id = window.location.hash.replace("#", "") || "overview";
     activateTab(id);
 
-    if (id === "hires") renderHires();
+    if (id === "hires") {
+      renderHires();
+    }
   });
 
   const initialId = window.location.hash.replace("#", "") || "overview";
   activateTab(initialId);
 
-  if (initialId === "hires") renderHires();
+  if (initialId === "hires") {
+    renderHires();
+  }
 }
 
  /* ---------------- RENDER: OVERVIEW ---------------- */
