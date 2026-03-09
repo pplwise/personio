@@ -59,8 +59,10 @@ document.addEventListener("DOMContentLoaded", () => {
   weeklyUpdates: "weekly_updates"
 };
 
-  const HIRES_PASSWORD = "Personio2026";
-  const MANAGEMENT_PASSWORD = "Personio2026";
+const HIRES_PASSWORD = "Personio2026";
+const MANAGEMENT_PASSWORD = "Personio2026";
+
+const HIRES_UNLOCK_KEY = "hires_unlocked";
 const MANAGEMENT_UNLOCK_KEY = "management_unlocked";
   const VIEW_STORAGE_KEY = "dashboard_view";
   const DEPARTMENT_STORAGE_KEY = "selected_department";
@@ -1199,16 +1201,17 @@ function getHealthByRoleFromInventory(inventoryRows, selectedWeekKey, filters = 
 
 function initTabs() {
   const tabs = document.querySelectorAll(".tab");
-  let hiresUnlocked = false;
 
   function canOpenTab(id) {
     if (id !== "hires") return true;
-    if (hiresUnlocked) return true;
+
+    const unlocked = localStorage.getItem(HIRES_UNLOCK_KEY) === "1";
+    if (unlocked) return true;
 
     const input = window.prompt("Enter password to access Hires & KPIs:");
     if (input !== HIRES_PASSWORD) return false;
 
-    hiresUnlocked = true;
+    localStorage.setItem(HIRES_UNLOCK_KEY, "1");
     return true;
   }
 
