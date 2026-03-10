@@ -2150,14 +2150,17 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     if (s.includes("offer")) return "offer";
     if (s.includes("final")) return "final";
 
-    if (
-      (s.includes("technical") && s.includes("interview")) ||
-      (s.includes("tech") && s.includes("interview")) ||
-      s.includes("coding") ||
-      s.includes("assignment") ||
-      s.includes("takehome") ||
-      s.includes("case_study")
-    ) return "tech";
+   if (
+  collapsed === "step3" ||
+  s.includes("step_3") ||
+  s.includes("step3") ||
+  (s.includes("technical") && s.includes("interview")) ||
+  (s.includes("tech") && s.includes("interview")) ||
+  s.includes("coding") ||
+  s.includes("assignment") ||
+  s.includes("takehome") ||
+  s.includes("case_study")
+) return "tech";
 
     if (collapsed === "step1" || s.includes("first_interview") || s.includes("1st_interview")) return "step1";
 
@@ -2296,7 +2299,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
 
     return {
       step1: rollingStep1,
-      tech: a.tech,
+      step3: a.step3,
       finals: a.final,
       offers: a.offer,
       expected,
@@ -2305,12 +2308,12 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
   }
 
   function computeAll() {
-    const out = { step1: 0, tech: 0, finals: 0, offers: 0, expected: 0, conf: null };
+    const out = { step1: 0, step3: 0, finals: 0, offers: 0, expected: 0, conf: null };
 
     roleList.forEach(role => {
       const r = computeForRole(role);
       out.step1 += r.step1;
-      out.tech += r.tech;
+      out.step3 += r.step3;
       out.finals += r.finals;
       out.offers += r.offers;
       out.expected += r.expected;
