@@ -2160,7 +2160,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
   s.includes("assignment") ||
   s.includes("takehome") ||
   s.includes("case_study")
-) return "tech";
+) return "step3";
 
     if (collapsed === "step1" || s.includes("first_interview") || s.includes("1st_interview")) return "step1";
 
@@ -2202,11 +2202,11 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     const bucket = stageBucket(stageRaw);
     const c = num(getField(r, ["count"]) || r.count);
 
-    if (!aggByRole.has(role)) aggByRole.set(role, { step1: 0, tech: 0, final: 0, offer: 0 });
+    if (!aggByRole.has(role)) aggByRole.set(role, { step1: 0, step3: 0, final: 0, offer: 0 });
     const a = aggByRole.get(role);
 
     if (bucket === "step1") a.step1 += c;
-    else if (bucket === "tech") a.step3 += c;
+    else if (bucket === "step3") a.step3 += c;
     else if (bucket === "final") a.final += c;
     else if (bucket === "offer") a.offer += c;
   });
@@ -2220,7 +2220,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
 
     const a = aggByRole.get(role) || { step1: 0, Step3: 0, final: 0, offer: 0 };
     const rollingStep1 = num(step1RollingByRole.get(role) || 0);
-    const hasData = rollingStep1 > 0 || a.tech > 0 || a.final > 0 || a.offer > 0;
+    const hasData = rollingStep1 > 0 || a.step3 > 0 || a.final > 0 || a.offer > 0;
 
     if (!shouldShowRoleOutsideOverview(role, hasData)) return;
 
@@ -2269,27 +2269,27 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
 
   function computeForRole(role) {
     const remaining = remainingOpeningsByRole[role] !== undefined ? remainingOpeningsByRole[role] : 0;
-    const a = aggByRole.get(role) || { step1: 0, tech: 0, final: 0, offer: 0 };
+    const a = aggByRole.get(role) || { step1: 0, step3: 0, final: 0, offer: 0 };
     const rollingStep1 = num(step1RollingByRole.get(role) || 0);
 
     const expectedFromStep1 = rollingStep1 / 25;
     const expectedRaw = Math.max(
       num(a.offer),
       num(a.final) * 0.5,
-      num(a.tech) / 10,
+      num(a.step3) / 10,
       expectedFromStep1
     );
 
     const expected = Math.min(remaining, expectedRaw);
 
     let conf = 0.07;
-    const anyPipeline = rollingStep1 > 0 || a.tech > 0 || a.final > 0 || a.offer > 0;
+    const anyPipeline = rollingStep1 > 0 || a.step3 > 0 || a.final > 0 || a.offer > 0;
 
     if (a.offer > 0) conf = 0.95;
     else if (a.final >= 2) conf = 0.95;
     else if (a.final >= 1) conf = 0.90;
-    else if (a.tech >= 10) conf = 0.90;
-    else if (a.tech >= 5) conf = 0.80;
+    else if (a.step3 >= 10) conf = 0.90;
+    else if (a.step3 >= 5) conf = 0.80;
     else if (rollingStep1 >= 25) conf = 0.95;
     else if (rollingStep1 >= 20) conf = 0.90;
     else if (rollingStep1 >= 15) conf = 0.80;
