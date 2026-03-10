@@ -2203,7 +2203,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     const a = aggByRole.get(role);
 
     if (bucket === "step1") a.step1 += c;
-    else if (bucket === "tech") a.tech += c;
+    else if (bucket === "tech") a.step3 += c;
     else if (bucket === "final") a.final += c;
     else if (bucket === "offer") a.offer += c;
   });
@@ -2215,7 +2215,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     const role = String(getField(r, ["role"]) || "").trim();
     if (!role || seen.has(role)) return;
 
-    const a = aggByRole.get(role) || { step1: 0, tech: 0, final: 0, offer: 0 };
+    const a = aggByRole.get(role) || { step1: 0, Step3: 0, final: 0, offer: 0 };
     const rollingStep1 = num(step1RollingByRole.get(role) || 0);
     const hasData = rollingStep1 > 0 || a.tech > 0 || a.final > 0 || a.offer > 0;
 
@@ -2336,7 +2336,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
           <tr>
             <th>Scope</th>
             <th class="num">Step1 (4W)</th>
-            <th class="num">Tech (KW)</th>
+            <th class="num">Step3 (KW)</th>
             <th class="num">Finals (KW)</th>
             <th class="num">Offers (KW)</th>
             <th class="num">Expected hires</th>
@@ -2347,7 +2347,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
           <tr>
             <td>${scope}</td>
             <td class="num ${getNumberClass(result.step1)}">${formatNumber(result.step1)}</td>
-            <td class="num ${getNumberClass(result.tech)}">${formatNumber(result.tech)}</td>
+            <td class="num ${getNumberClass(result.step3)}">${formatNumber(result.step3)}</td>
             <td class="num ${getNumberClass(result.finals)}">${formatNumber(result.finals)}</td>
             <td class="num ${getNumberClass(result.offers)}">${formatNumber(result.offers)}</td>
             <td class="num ${getNumberClass(result.expected)}">~${Number(result.expected).toFixed(1)}</td>
