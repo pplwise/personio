@@ -2486,17 +2486,13 @@ const recruiterSeen = new Set();
 
     // 25 Step 1 interviews = 1 expected hire
     const expectedFromStep1 = rollingStep1 / 25;
-    const expectedFromFinals = num(a.final) * 0.5;
-    const expectedFromOffers = num(a.offer);
+    const expectedFromFinals = num(a.final) * 0.75;
+    const expectedFromOffers = num(a.offer) * 0.9;
 
-    // Weighted combination:
-    // - offers count fully
-    // - finals count strongly, but not fully
-    // - step1 counts as top-of-funnel potential
     const expectedRaw =
-      expectedFromOffers +
-      (expectedFromFinals * 0.75) +
-      (expectedFromStep1 * 0.5);
+      expectedFromStep1 +
+      expectedFromFinals +
+      expectedFromOffers;
 
     const expected = Math.min(remaining, expectedRaw);
 
