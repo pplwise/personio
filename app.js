@@ -2244,15 +2244,23 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
   }
 
   const recruiterOptions = [];
-  const recruiterSeen = new Set();
+const recruiterSeen = new Set();
 
-  (inventoryRows || []).forEach(r => {
-    if (!isWeekMatch(r, invWeekKey)) return;
-    const recruiter = (getField(r, ["recruiter"]) || r.recruiter || "Unassigned").trim() || "Unassigned";
-    if (recruiterSeen.has(recruiter)) return;
-    recruiterSeen.add(recruiter);
-    recruiterOptions.push(recruiter);
-  });
+// Recruiters from pipeline inventory
+(inventoryRows || []).forEach(r => {
+  const recruiter = (getField(r, ["recruiter"]) || r.recruiter || "Unassigned").trim() || "Unassigned";
+  if (recruiterSeen.has(recruiter)) return;
+  recruiterSeen.add(recruiter);
+  recruiterOptions.push(recruiter);
+});
+
+// Recruiters from pipeline weekly (Step1 activity etc.)
+(weeklyRows || []).forEach(r => {
+  const recruiter = (getField(r, ["recruiter"]) || r.recruiter || "Unassigned").trim() || "Unassigned";
+  if (recruiterSeen.has(recruiter)) return;
+  recruiterSeen.add(recruiter);
+  recruiterOptions.push(recruiter);
+});
 
   const departmentOptions = [];
   const departmentSeen = new Set();
