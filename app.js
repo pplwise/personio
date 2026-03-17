@@ -115,9 +115,11 @@ selectedActivityRecruiter: "all",
 selectedSourcingRole: "all",
 selectedSourcingRecruiter: "all",
 selectedManagementWeek: "",
-    selectedManagementQuarter: "",
-    selectedForecastRole: "all",
-    managementCharts: {}
+selectedManagementQuarter: "",
+selectedForecastRole: "all",
+selectedForecastRecruiter: "all",
+selectedForecastDepartment: "all",
+managementCharts: {}
   };
 
   /* ---------------- HELPERS ---------------- */
@@ -2201,7 +2203,10 @@ function renderManagementWeeklyUpdates({ weeklyUpdatesRows, selectedRole }) {
 function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, weeklyRows }) {
   const container = $("managementForecast");
   const roleSelect = $("managementForecastRoleSelect");
-  if (!container || !roleSelect) return;
+  const recruiterSelect = $("managementForecastRecruiterSelect");
+  const departmentSelect = $("managementForecastDepartmentSelect");
+
+  if (!container || !roleSelect || !recruiterSelect || !departmentSelect) return;
 
   let invWeekKey = "";
   const invWeekSet = new Set();
@@ -2226,12 +2231,59 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     }
   }
 
+  const selectedForecastRecruiter = state.selectedForecastRecruiter || "all";
+  const selectedForecastDepartment = state.selectedForecastDepartment || "all";
+
+  function matchesForecastFilters(row) {
+    const recruiter = (getField(row, ["recruiter"]) || row.recruiter || "Unassigned").trim() || "Unassigned";
+    const department = normalizeDepartmentValue(getField(row, ["department"]) || row.department);
+
+    if (selectedForecastRecruiter !== "all" && recruiter !== selectedForecastRecruiter) return false;
+    if (selectedForecastDepartment !== "all" && department !== selectedForecastDepartment) return false;
+    return true;
+  }
+
+  const recruiterOptions = [];
+  const recruiterSeen = new Set();
+
+  (inventoryRows || []).forEach(r => {
+    if (!isWeekMatch(r, invWeekKey)) return;
+    const recruiter = (getField(r, ["recruiter"]) || r.recruiter || "Unassigned").trim() || "Unassigned";
+    if (recruiterSeen.has(recruiter)) return;
+    recruiterSeen.add(recruiter);
+    recruiterOptions.push(recruiter);
+  });
+
+  const departmentOptions = [];
+  const departmentSeen = new Set();
+
+  (overviewRows || []).forEach(r => {
+    const department = normalizeDepartmentValue(getField(r, ["department"]) || r.department);
+    if (!department || departmentSeen.has(department)) return;
+    departmentSeen.add(department);
+    departmentOptions.push(department);
+  });
+
+  setFilterOptions(recruiterSelect, recruiterOptions, "All recruiters");
+  setFilterOptions(departmentSelect, departmentOptions, "All departments");
+
+  if (!["all", ...recruiterOptions].includes(state.selectedForecastRecruiter)) {
+    state.selectedForecastRecruiter = "all";
+  }
+  if (!["all", ...departmentOptions].includes(state.selectedForecastDepartment)) {
+    state.selectedForecastDepartment = "all";
+  }
+
+  recruiterSelect.value = state.selectedForecastRecruiter;
+  departmentSelect.value = state.selectedForecastDepartment;
+
   const rollingKeys = new Set(getRollingWeekKeys(invWeekKey, 4));
   const step1RollingByRole = new Map();
 
   (weeklyRows || []).forEach(r => {
     const wk = weekKey(r);
     if (!wk || !rollingKeys.has(wk)) return;
+    if (!matchesForecastFilters(r)) return;
 
     const role = String(getField(r, ["role"]) || r.role || "").trim();
     if (!role) return;
@@ -2253,17 +2305,17 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     if (s.includes("offer")) return "offer";
     if (s.includes("final")) return "final";
 
-   if (
-  collapsed === "step3" ||
-  s.includes("step_3") ||
-  s.includes("step3") ||
-  (s.includes("technical") && s.includes("interview")) ||
-  (s.includes("tech") && s.includes("interview")) ||
-  s.includes("coding") ||
-  s.includes("assignment") ||
-  s.includes("takehome") ||
-  s.includes("case_study")
-) return "step3";
+    if (
+      collapsed === "step3" ||
+      s.includes("step_3") ||
+      s.includes("step3") ||
+      (s.includes("technical") && s.includes("interview")) ||
+      (s.includes("tech") && s.includes("interview")) ||
+      s.includes("coding") ||
+      s.includes("assignment") ||
+      s.includes("takehome") ||
+      s.includes("case_study")
+    ) return "step3";
 
     if (collapsed === "step1" || s.includes("first_interview") || s.includes("1st_interview")) return "step1";
 
@@ -2284,6 +2336,8 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
 
   const remainingOpeningsByRole = {};
   (overviewRows || []).forEach(r => {
+    if (!matchesForecastFilters(r)) return;
+
     const role = String(getField(r, ["role"]) || "").trim();
     if (!role) return;
 
@@ -2295,6 +2349,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
 
   (inventoryRows || []).forEach(r => {
     if (!isWeekMatch(r, invWeekKey)) return;
+    if (!matchesForecastFilters(r)) return;
 
     const role = String(getField(r, ["role"]) || r.role || "").trim();
     if (!role) return;
@@ -2318,10 +2373,12 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
   const seen = new Set();
 
   (overviewRows || []).forEach(r => {
+    if (!matchesForecastFilters(r)) return;
+
     const role = String(getField(r, ["role"]) || "").trim();
     if (!role || seen.has(role)) return;
 
-    const a = aggByRole.get(role) || { step1: 0, Step3: 0, final: 0, offer: 0 };
+    const a = aggByRole.get(role) || { step1: 0, step3: 0, final: 0, offer: 0 };
     const rollingStep1 = num(step1RollingByRole.get(role) || 0);
     const hasData = rollingStep1 > 0 || a.step3 > 0 || a.final > 0 || a.offer > 0;
 
@@ -2430,7 +2487,12 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
   const result = selectedRole === "all" ? computeAll() : computeForRole(selectedRole);
   if (selectedRole === "all") result.conf = null;
 
-  const scope = selectedRole === "all" ? "All roles" : selectedRole;
+  const scopeParts = [];
+  if (selectedForecastDepartment !== "all") scopeParts.push(selectedForecastDepartment);
+  if (selectedForecastRecruiter !== "all") scopeParts.push(selectedForecastRecruiter);
+  if (selectedRole !== "all") scopeParts.push(selectedRole);
+  const scope = scopeParts.length ? scopeParts.join(" · ") : "All roles";
+
   const confCell = result.conf === null
     ? "—"
     : `<span class="pill ${pillClass(result.conf)}">${labelForConfidence(result.conf)} · ${Math.round(result.conf * 100)}%</span>`;
@@ -2510,12 +2572,16 @@ function syncWeekSelections() {
     activityRole: getSelectValue("activityRoleSelect", state.selectedActivityRole || "all"),
     activityRecruiter: getSelectValue("activityRecruiterSelect", state.selectedActivityRecruiter || "all"),
     sourcingRole: getSelectValue("sourcingRoleSelect", state.selectedSourcingRole || "all"),
-    sourcingRecruiter: getSelectValue("sourcingRecruiterSelect", state.selectedSourcingRecruiter || "all"),
-    forecastRole: getSelectValue("managementForecastRoleSelect", state.selectedForecastRole || "all")
+   sourcingRecruiter: getSelectValue("sourcingRecruiterSelect", state.selectedSourcingRecruiter || "all"),
+forecastRole: getSelectValue("managementForecastRoleSelect", state.selectedForecastRole || "all"),
+forecastRecruiter: getSelectValue("managementForecastRecruiterSelect", state.selectedForecastRecruiter || "all"),
+forecastDepartment: getSelectValue("managementForecastDepartmentSelect", state.selectedForecastDepartment || "all")
   };
 
   state.selectedForecastRole = prev.forecastRole || state.selectedForecastRole || "all";
-
+state.selectedForecastRecruiter = prev.forecastRecruiter || state.selectedForecastRecruiter || "all";
+state.selectedForecastDepartment = prev.forecastDepartment || state.selectedForecastDepartment || "all";
+  
   const berlinDate = getDateInTimeZone("Europe/Berlin");
   const currentYear = berlinDate.getUTCFullYear();
   const currentQuarter = getQuarterForMonth(berlinDate.getUTCMonth());
@@ -2698,8 +2764,14 @@ updateSourcingWeekModeUI();
   state.selectedSourcingRole = getSelectValue("sourcingRoleSelect", state.selectedSourcingRole || "all");
   state.selectedSourcingRecruiter = getSelectValue("sourcingRecruiterSelect", state.selectedSourcingRecruiter || "all");
 
-  const fr = $("managementForecastRoleSelect");
-  if (fr) fr.value = state.selectedForecastRole || "all";
+const fr = $("managementForecastRoleSelect");
+if (fr) fr.value = state.selectedForecastRole || "all";
+
+const frr = $("managementForecastRecruiterSelect");
+if (frr) frr.value = state.selectedForecastRecruiter || "all";
+
+const fd = $("managementForecastDepartmentSelect");
+if (fd) fd.value = state.selectedForecastDepartment || "all";
 }
 
 function renderAll() {
@@ -2997,6 +3069,16 @@ on("managementQuarterSelect", "change", handleManagementQuarterChange);
 
 on("managementForecastRoleSelect", "change", () => {
   state.selectedForecastRole = $("managementForecastRoleSelect") ? $("managementForecastRoleSelect").value : "all";
+  renderManagement();
+});
+
+on("managementForecastRecruiterSelect", "change", () => {
+  state.selectedForecastRecruiter = $("managementForecastRecruiterSelect") ? $("managementForecastRecruiterSelect").value : "all";
+  renderManagement();
+});
+
+on("managementForecastDepartmentSelect", "change", () => {
+  state.selectedForecastDepartment = $("managementForecastDepartmentSelect") ? $("managementForecastDepartmentSelect").value : "all";
   renderManagement();
 });
 
