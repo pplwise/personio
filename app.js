@@ -97,15 +97,24 @@ const TAB_STORAGE_KEY = "active_tab";
     activityOptions: [],
     sourcingOptions: [],
 
-    selectedPipelineWeek: "",
-    selectedPipelineRecruiter: "all",
-    selectedActivityWeek: "",
-    selectedSourcingWeek: "",
-    selectedActivityRole: "all",
-    selectedActivityRecruiter: "all",
-    selectedSourcingRole: "all",
-    selectedSourcingRecruiter: "all",
-    selectedManagementWeek: "",
+   selectedPipelineWeek: "",
+selectedPipelineRecruiter: "all",
+
+selectedActivityWeekMode: "week",
+selectedActivityWeek: "",
+selectedActivityFromWeek: "",
+selectedActivityToWeek: "",
+
+selectedSourcingWeekMode: "rolling",
+selectedSourcingWeek: "",
+selectedSourcingFromWeek: "",
+selectedSourcingToWeek: "",
+
+selectedActivityRole: "all",
+selectedActivityRecruiter: "all",
+selectedSourcingRole: "all",
+selectedSourcingRecruiter: "all",
+selectedManagementWeek: "",
     selectedManagementQuarter: "",
     selectedForecastRole: "all",
     managementCharts: {}
@@ -590,6 +599,65 @@ function applyDepartmentSelection() {
     return options[0].key; // fallback latest
   }
 
+  function compareWeekKeys(a, b) {
+  const pa = getWeekYearFromKey(a);
+  const pb = getWeekYearFromKey(b);
+  if (!pa || !pb) return 0;
+  if (pa.year !== pb.year) return pa.year - pb.year;
+  return pa.kw - pb.kw;
+}
+
+function isWeekKeyInRange(targetKey, fromKey, toKey) {
+  if (!targetKey || !fromKey || !toKey) return false;
+
+  let start = fromKey;
+  let end = toKey;
+
+  if (compareWeekKeys(start, end) > 0) {
+    start = toKey;
+    end = fromKey;
+  }
+
+  return compareWeekKeys(targetKey, start) >= 0 && compareWeekKeys(targetKey, end) <= 0;
+}
+
+function isRowInWeekRange(row, fromKey, toKey) {
+  return isWeekKeyInRange(weekKey(row), fromKey, toKey);
+}
+
+function setModeOptions(select, items, fallbackValue) {
+  if (!select) return;
+
+  const current = select.value || fallbackValue || "";
+  select.innerHTML = "";
+
+  items.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item.value;
+    opt.textContent = item.label;
+    select.appendChild(opt);
+  });
+
+  const allowed = new Set(items.map(item => item.value));
+  select.value = allowed.has(current) ? current : fallbackValue;
+}
+
+function updateActivityWeekModeUI() {
+  const mode = state.selectedActivityWeekMode || "week";
+
+  $("activityWeekSingleWrap")?.classList.toggle("hidden", mode !== "week");
+  $("activityWeekFromWrap")?.classList.toggle("hidden", mode !== "range");
+  $("activityWeekToWrap")?.classList.toggle("hidden", mode !== "range");
+}
+
+function updateSourcingWeekModeUI() {
+  const mode = state.selectedSourcingWeekMode || "rolling";
+
+  $("sourcingWeekSingleWrap")?.classList.toggle("hidden", mode !== "week" && mode !== "rolling");
+  $("sourcingWeekFromWrap")?.classList.toggle("hidden", mode !== "range");
+  $("sourcingWeekToWrap")?.classList.toggle("hidden", mode !== "range");
+}
+  
   function setSelectOptions(select, options, includeAllTime = false) {
     if (!select) return;
     const current = select.value;
@@ -615,33 +683,10 @@ function applyDepartmentSelection() {
     else if (options.length) select.value = options[0].key;
   }
 
-  function setSourcingWeekOptions(select, endWeekKey) {
+ function setSourcingWeekOptions(select, options) {
   if (!select) return;
-
-  const current = select.value;
-  select.innerHTML = "";
-
-  // Option 1: Rolling 4 weeks (default)
-  const endKw = getWeekNumberFromKey(endWeekKey);
-  const optRolling = document.createElement("option");
-  optRolling.value = endWeekKey || "";
-  optRolling.textContent = endKw
-    ? `Rolling 4w · ending KW ${String(endKw).padStart(2, "0")}`
-    : "Rolling 4w · ending";
-  select.appendChild(optRolling);
-
-  // Option 2: All time
-  const optAll = document.createElement("option");
-  optAll.value = "all";
-  optAll.textContent = "All time";
-  select.appendChild(optAll);
-
-  // keep selection if valid, otherwise default to rolling
-  const allowed = new Set([optRolling.value, "all"]);
-  if (current && allowed.has(current)) select.value = current;
-  else select.value = optRolling.value;
-
-  select.disabled = false; // IMPORTANT: must be selectable now
+  setSelectOptions(select, options || [], false);
+  select.disabled = false;
 }
 
   function setFilterOptions(select, values, allLabel) {
@@ -1521,14 +1566,24 @@ function getActivityStages(weeklyRows, stageOrder) {
 }
 
 function updateActivityFilters() {
-  const selectedWeekKey = state.selectedActivityWeek || "";
+  const mode = state.selectedActivityWeekMode || "week";
   const weekly = state.pipelineWeeklyRows || [];
   const currentRole = state.selectedActivityRole || "all";
   const currentRecruiter = state.selectedActivityRecruiter || "all";
 
+  let baseRows = weekly;
+
+  if (mode === "week") {
+    const selectedWeekKey = state.selectedActivityWeek || "";
+    baseRows = weekly.filter(r => isWeekMatch(r, selectedWeekKey));
+  } else if (mode === "range") {
+    baseRows = weekly.filter(r =>
+      isRowInWeekRange(r, state.selectedActivityFromWeek, state.selectedActivityToWeek)
+    );
+  }
+
   const rolesForRecruiter = getOrderedValues(
-    weekly.filter(r => {
-      if (!isWeekMatch(r, selectedWeekKey)) return false;
+    baseRows.filter(r => {
       if (currentRecruiter !== "all" && r.recruiter !== currentRecruiter) return false;
       return true;
     }),
@@ -1544,8 +1599,7 @@ function updateActivityFilters() {
   state.selectedActivityRole = $("activityRoleSelect") ? $("activityRoleSelect").value : "all";
 
   const recruitersForRole = getOrderedValues(
-    weekly.filter(r => {
-      if (!isWeekMatch(r, selectedWeekKey)) return false;
+    baseRows.filter(r => {
       if (state.selectedActivityRole !== "all" && r.role !== state.selectedActivityRole) return false;
       return true;
     }),
@@ -1563,12 +1617,17 @@ function updateActivityFilters() {
 
 function renderActivity() {
   const weekly = state.pipelineWeeklyRows || [];
-  const selectedWeekKey = state.selectedActivityWeek || "";
+  const mode = state.selectedActivityWeekMode || "week";
   const selectedRole = state.selectedActivityRole || "all";
   const selectedRecruiter = state.selectedActivityRecruiter || "all";
 
   const filtered = weekly.filter(r => {
-    if (!isWeekMatch(r, selectedWeekKey)) return false;
+    if (mode === "week") {
+      if (!isWeekMatch(r, state.selectedActivityWeek || "")) return false;
+    } else if (mode === "range") {
+      if (!isRowInWeekRange(r, state.selectedActivityFromWeek, state.selectedActivityToWeek)) return false;
+    }
+
     if (selectedRole !== "all" && r.role !== selectedRole) return false;
     if (selectedRecruiter !== "all" && r.recruiter !== selectedRecruiter) return false;
     return true;
@@ -1618,6 +1677,8 @@ function renderActivity() {
     `;
   }
 
+
+
   const tbody = $("activityTable");
   if (!tbody) return;
   tbody.innerHTML = "";
@@ -1640,58 +1701,92 @@ function renderActivity() {
 
 /* ---------------- RENDER: SOURCING ---------------- */
 
-function isSourcingWeekInWindow(row, selectedWeekKey) {
+function isSourcingWeekInWindow(row) {
   const wk = weekKey(row);
   if (!wk) return false;
 
-  const windowKeys = getSourcingWindowWeekKeys(selectedWeekKey);
+  const mode = state.selectedSourcingWeekMode || "rolling";
 
-  if (windowKeys === "all") return true;
-  if (Array.isArray(windowKeys)) return windowKeys.includes(wk);
-  if (windowKeys instanceof Set) return windowKeys.has(wk);
+  if (mode === "all") return true;
 
-  return false;
-}
-
-function getSourcingWindowWeekKeys(selectedWeekKey) {
-  if (selectedWeekKey === "all") return "all";
-
-  if (!selectedWeekKey) {
-    const options = state.sourcingOptions || [];
-    const hasToday = options.some(o => o.key === TODAY_WEEK_KEY);
-    const endKey = hasToday ? TODAY_WEEK_KEY : (options[0]?.key || "");
-    return endKey ? getRollingWeekKeys(endKey, 4) : [];
+  if (mode === "week") {
+    return wk === state.selectedSourcingWeek;
   }
 
-  return getRollingWeekKeys(selectedWeekKey, 4);
+  if (mode === "range") {
+    return isWeekKeyInRange(wk, state.selectedSourcingFromWeek, state.selectedSourcingToWeek);
+  }
+
+  // rolling
+  const endKey = state.selectedSourcingWeek || "";
+  const rollingKeys = endKey ? getRollingWeekKeys(endKey, 4) : [];
+  return rollingKeys.includes(wk);
+}
+
+function getSourcingWindowWeekKeys() {
+  const mode = state.selectedSourcingWeekMode || "rolling";
+
+  if (mode === "all") return "all";
+  if (mode === "week") return state.selectedSourcingWeek ? [state.selectedSourcingWeek] : [];
+  if (mode === "range") {
+    const options = state.sourcingOptions || [];
+    return options
+      .map(o => o.key)
+      .filter(key => isWeekKeyInRange(key, state.selectedSourcingFromWeek, state.selectedSourcingToWeek));
+  }
+
+  const endKey = state.selectedSourcingWeek || "";
+  return endKey ? getRollingWeekKeys(endKey, 4) : [];
 }
 
 function updateSourcingFilters() {
-  const selectedWeekKey = state.selectedSourcingWeek || "";
   const rows = state.sourcingRows || [];
+  const currentRole = state.selectedSourcingRole || "all";
+  const currentRecruiter = state.selectedSourcingRecruiter || "all";
 
-  const baseRows = selectedWeekKey === "all"
-    ? rows
-    : rows.filter(r => isSourcingWeekInWindow(r, selectedWeekKey));
+  const baseRows = rows.filter(r => isSourcingWeekInWindow(r));
 
-  const roles = getOrderedValues(baseRows, "all", r => r.role);
-  const recruiters = getOrderedValues(baseRows, "all", r => r.recruiter);
+  const roles = getOrderedValues(
+    baseRows.filter(r => {
+      if (currentRecruiter !== "all" && r.recruiter !== currentRecruiter) return false;
+      return true;
+    }),
+    "all",
+    r => r.role
+  );
 
   setFilterOptions($("sourcingRoleSelect"), roles, "All roles");
-  setFilterOptions($("sourcingRecruiterSelect"), recruiters, "All recruiters");
-
+  if (currentRole !== "all" && !roles.includes(currentRole)) {
+    const el = $("sourcingRoleSelect");
+    if (el) el.value = "all";
+  }
   state.selectedSourcingRole = $("sourcingRoleSelect") ? $("sourcingRoleSelect").value : "all";
+
+  const recruiters = getOrderedValues(
+    baseRows.filter(r => {
+      if (state.selectedSourcingRole !== "all" && r.role !== state.selectedSourcingRole) return false;
+      return true;
+    }),
+    "all",
+    r => r.recruiter
+  );
+
+  setFilterOptions($("sourcingRecruiterSelect"), recruiters, "All recruiters");
+  if (currentRecruiter !== "all" && !recruiters.includes(currentRecruiter)) {
+    const el = $("sourcingRecruiterSelect");
+    if (el) el.value = "all";
+  }
   state.selectedSourcingRecruiter = $("sourcingRecruiterSelect") ? $("sourcingRecruiterSelect").value : "all";
 }
 
 function renderSourcing() {
   const rows = state.sourcingRows || [];
-  const selectedWeekKey = state.selectedSourcingWeek || "";
+  const mode = state.selectedSourcingWeekMode || "rolling";
   const selectedRole = state.selectedSourcingRole || "all";
   const selectedRecruiter = state.selectedSourcingRecruiter || "all";
 
   const filtered = rows.filter(r => {
-    if (selectedWeekKey !== "all" && !isSourcingWeekInWindow(r, selectedWeekKey)) return false;
+    if (!isSourcingWeekInWindow(r)) return false;
     if (selectedRole !== "all" && r.role !== selectedRole) return false;
     if (selectedRecruiter !== "all" && r.recruiter !== selectedRecruiter) return false;
     return true;
@@ -1703,7 +1798,7 @@ function renderSourcing() {
 
   const thead = document.querySelector("#sourcing table thead");
   if (thead) {
-    const convLabel = selectedWeekKey === "all" ? "Conv. (all)" : "Conv. (4w)";
+    const convLabel = mode === "all" ? "Conv. (all)" : mode === "range" ? "Conv. (range)" : "Conv. (4w)";
     thead.innerHTML = `
       <tr>
         <th>Role</th>
@@ -1789,7 +1884,10 @@ function renderSourcing() {
 
   const overallSourcedConv = totalSourced > 0 ? totalSourcedScreens / totalSourced : null;
   const overallConnectConv = totalConnect > 0 ? totalConnectScreens / totalConnect : null;
-  const convLabel = selectedWeekKey === "all" ? "All-time conversion" : "4-week conversion";
+
+  let convLabel = "4-week conversion";
+  if (mode === "all") convLabel = "All-time conversion";
+  if (mode === "range") convLabel = "Range conversion";
 
   const summary = $("sourcingSummary");
   if (summary) {
@@ -1801,6 +1899,7 @@ function renderSourcing() {
     `;
   }
 }
+
 
   function parseDate(value) {
   if (!value) return null;
@@ -2388,11 +2487,20 @@ function syncWeekSelections() {
     return el && typeof el.value !== "undefined" ? el.value : fallback;
   }
 
-  const prev = {
-    pipelineWeek: getSelectValue("pipelineWeekSelect", state.selectedPipelineWeek || ""),
-    activityWeek: getSelectValue("activityWeekSelect", state.selectedActivityWeek || "all"),
-    sourcingWeek: getSelectValue("sourcingWeekSelect", state.selectedSourcingWeek || ""),
-    managementWeek: getSelectValue("managementWeekSelect", state.selectedManagementWeek || "all"),
+ const prev = {
+  pipelineWeek: getSelectValue("pipelineWeekSelect", state.selectedPipelineWeek || ""),
+
+  activityWeekMode: getSelectValue("activityWeekModeSelect", state.selectedActivityWeekMode || "week"),
+  activityWeek: getSelectValue("activityWeekSelect", state.selectedActivityWeek || ""),
+  activityFromWeek: getSelectValue("activityFromWeekSelect", state.selectedActivityFromWeek || ""),
+  activityToWeek: getSelectValue("activityToWeekSelect", state.selectedActivityToWeek || ""),
+
+  sourcingWeekMode: getSelectValue("sourcingWeekModeSelect", state.selectedSourcingWeekMode || "rolling"),
+  sourcingWeek: getSelectValue("sourcingWeekSelect", state.selectedSourcingWeek || ""),
+  sourcingFromWeek: getSelectValue("sourcingFromWeekSelect", state.selectedSourcingFromWeek || ""),
+  sourcingToWeek: getSelectValue("sourcingToWeekSelect", state.selectedSourcingToWeek || ""),
+
+  managementWeek: getSelectValue("managementWeekSelect", state.selectedManagementWeek || "all"),
     managementQuarter: getSelectValue("managementQuarterSelect", state.selectedManagementQuarter || ""),
     pipelineRecruiter: getSelectValue("pipelineRecruiterSelect", state.selectedPipelineRecruiter || "all"),
     activityRole: getSelectValue("activityRoleSelect", state.selectedActivityRole || "all"),
@@ -2415,20 +2523,40 @@ function syncWeekSelections() {
   );
 
   state.activityOptions = getWeekOptions(state.pipelineWeeklyRows || []);
-  state.sourcingOptions = getWeekOptions(state.sourcingRows || []);
+state.sourcingOptions = getWeekOptions(state.sourcingRows || []);
 
-  setSelectOptions($("pipelineWeekSelect"), state.pipelineOptions, false);
-  setSelectOptions($("activityWeekSelect"), state.activityOptions, true);
+setSelectOptions($("pipelineWeekSelect"), state.pipelineOptions, false);
 
-  const sourcingEndKey =
-    pickPreferredWeekKey(state.sourcingOptions, PREFERRED_KW, PREFERRED_YEAR) ||
-    (state.sourcingOptions[0] ? state.sourcingOptions[0].key : "") ||
-    "";
+setModeOptions(
+  $("activityWeekModeSelect"),
+  [
+    { value: "week", label: "Single week" },
+    { value: "range", label: "Custom range" },
+    { value: "all", label: "All time" }
+  ],
+  "week"
+);
 
-  setSourcingWeekOptions($("sourcingWeekSelect"), sourcingEndKey);
+setSelectOptions($("activityWeekSelect"), state.activityOptions, false);
+setSelectOptions($("activityFromWeekSelect"), state.activityOptions, false);
+setSelectOptions($("activityToWeekSelect"), state.activityOptions, false);
 
-  const managementOptions = getWeekOptions(state.pipelineWeeklyRows || []);
-  setSelectOptions($("managementWeekSelect"), managementOptions, true);
+setModeOptions(
+  $("sourcingWeekModeSelect"),
+  [
+    { value: "rolling", label: "Rolling 4 weeks" },
+    { value: "range", label: "Custom range" },
+    { value: "all", label: "All time" }
+  ],
+  "rolling"
+);
+
+setSourcingWeekOptions($("sourcingWeekSelect"), state.sourcingOptions);
+setSelectOptions($("sourcingFromWeekSelect"), state.sourcingOptions, false);
+setSelectOptions($("sourcingToWeekSelect"), state.sourcingOptions, false);
+
+const managementOptions = getWeekOptions(state.pipelineWeeklyRows || []);
+setSelectOptions($("managementWeekSelect"), managementOptions, true);
 
   const pipelineAllowed = (state.pipelineOptions || []).map(o => o.key);
   const activityAllowed = ["all"].concat((state.activityOptions || []).map(o => o.key));
@@ -2444,20 +2572,50 @@ function syncWeekSelections() {
       "";
   }
 
-  if (prev.activityWeek && activityAllowed.includes(prev.activityWeek)) {
-    state.selectedActivityWeek = prev.activityWeek;
-  } else {
-    state.selectedActivityWeek =
-      pickPreferredWeekKey(state.activityOptions, PREFERRED_KW, PREFERRED_YEAR) ||
-      ((state.activityOptions[0] && state.activityOptions[0].key) ? state.activityOptions[0].key : "all") ||
-      "all";
-  }
+state.selectedActivityWeekMode = ["week", "range", "all"].includes(prev.activityWeekMode)
+  ? prev.activityWeekMode
+  : "week";
 
-  if (prev.sourcingWeek && sourcingAllowed.includes(prev.sourcingWeek)) {
-    state.selectedSourcingWeek = prev.sourcingWeek;
-  } else {
-    state.selectedSourcingWeek = sourcingEndKey;
-  }
+state.selectedActivityWeek =
+  (prev.activityWeek && activityAllowed.includes(prev.activityWeek))
+    ? prev.activityWeek
+    : (
+      pickPreferredWeekKey(state.activityOptions, PREFERRED_KW, PREFERRED_YEAR) ||
+      ((state.activityOptions[0] && state.activityOptions[0].key) ? state.activityOptions[0].key : "")
+    );
+
+state.selectedActivityFromWeek =
+  (prev.activityFromWeek && activityAllowed.includes(prev.activityFromWeek))
+    ? prev.activityFromWeek
+    : (state.activityOptions[state.activityOptions.length - 1]?.key || state.selectedActivityWeek || "");
+
+state.selectedActivityToWeek =
+  (prev.activityToWeek && activityAllowed.includes(prev.activityToWeek))
+    ? prev.activityToWeek
+    : (state.selectedActivityWeek || state.activityOptions[0]?.key || "");
+
+state.selectedSourcingWeekMode = ["rolling", "range", "all"].includes(prev.sourcingWeekMode)
+  ? prev.sourcingWeekMode
+  : "rolling";
+
+state.selectedSourcingWeek =
+  (prev.sourcingWeek && sourcingAllowed.includes(prev.sourcingWeek))
+    ? prev.sourcingWeek
+    : (
+      pickPreferredWeekKey(state.sourcingOptions, PREFERRED_KW, PREFERRED_YEAR) ||
+      ((state.sourcingOptions[0] && state.sourcingOptions[0].key) ? state.sourcingOptions[0].key : "")
+    );
+
+state.selectedSourcingFromWeek =
+  (prev.sourcingFromWeek && sourcingAllowed.includes(prev.sourcingFromWeek))
+    ? prev.sourcingFromWeek
+    : (state.sourcingOptions[state.sourcingOptions.length - 1]?.key || state.selectedSourcingWeek || "");
+
+state.selectedSourcingToWeek =
+  (prev.sourcingToWeek && sourcingAllowed.includes(prev.sourcingToWeek))
+    ? prev.sourcingToWeek
+    : (state.selectedSourcingWeek || state.sourcingOptions[0]?.key || "");
+
 
   if (prev.managementWeek && managementAllowed.includes(prev.managementWeek)) {
     state.selectedManagementWeek = prev.managementWeek;
@@ -2488,6 +2646,33 @@ function syncWeekSelections() {
   updateActivityFilters();
   updateSourcingFilters();
 
+const awm = $("activityWeekModeSelect");
+if (awm) awm.value = state.selectedActivityWeekMode;
+
+const aws = $("activityWeekSelect");
+if (aws) aws.value = state.selectedActivityWeek;
+
+const awf = $("activityFromWeekSelect");
+if (awf) awf.value = state.selectedActivityFromWeek;
+
+const awt = $("activityToWeekSelect");
+if (awt) awt.value = state.selectedActivityToWeek;
+
+const swm = $("sourcingWeekModeSelect");
+if (swm) swm.value = state.selectedSourcingWeekMode;
+
+const sws = $("sourcingWeekSelect");
+if (sws) sws.value = state.selectedSourcingWeek;
+
+const swf = $("sourcingFromWeekSelect");
+if (swf) swf.value = state.selectedSourcingFromWeek;
+
+const swt = $("sourcingToWeekSelect");
+if (swt) swt.value = state.selectedSourcingToWeek;
+
+updateActivityWeekModeUI();
+updateSourcingWeekModeUI();
+  
   const pr = $("pipelineRecruiterSelect");
   if (pr) pr.value = prev.pipelineRecruiter;
 
@@ -2731,24 +2916,81 @@ on("viewManagement", "click", () => {
 });
 
 
-  on("refreshBtn", "click", refreshAll);
+on("refreshBtn", "click", refreshAll);
 
-  on("pipelineWeekSelect", "change", handlePipelineWeekChange);
-  on("pipelineRecruiterSelect", "change", () => { state.selectedPipelineRecruiter = $("pipelineRecruiterSelect") ? $("pipelineRecruiterSelect").value : "all"; renderPipeline(); renderManagement(); });
-  on("activityWeekSelect", "change", handleActivityWeekChange);
-    on("overviewDepartmentSelect", "change", () => {
-    state.selectedOverviewDepartment = $("overviewDepartmentSelect") ? $("overviewDepartmentSelect").value : "all";
-    renderOverview();
-  });
-  on("sourcingWeekSelect", "change", handleSourcingWeekChange);
-  on("activityRoleSelect", "change", handleActivityRoleChange);
-  on("activityRecruiterSelect", "change", handleActivityRecruiterChange);
-  on("sourcingRoleSelect", "change", handleSourcingRoleChange);
-  on("sourcingRecruiterSelect", "change", handleSourcingRecruiterChange);
+on("pipelineWeekSelect", "change", handlePipelineWeekChange);
+on("pipelineRecruiterSelect", "change", () => {
+  state.selectedPipelineRecruiter = $("pipelineRecruiterSelect") ? $("pipelineRecruiterSelect").value : "all";
+  renderPipeline();
+  renderManagement();
+});
+
+on("activityWeekModeSelect", "change", () => {
+  state.selectedActivityWeekMode = $("activityWeekModeSelect") ? $("activityWeekModeSelect").value : "week";
+  updateActivityWeekModeUI();
+  updateActivityFilters();
+  renderActivity();
+  renderManagement();
+});
+
+on("activityWeekSelect", "change", () => {
+  state.selectedActivityWeek = $("activityWeekSelect") ? $("activityWeekSelect").value : "";
+  updateActivityFilters();
+  renderActivity();
+  renderManagement();
+});
+
+on("activityFromWeekSelect", "change", () => {
+  state.selectedActivityFromWeek = $("activityFromWeekSelect") ? $("activityFromWeekSelect").value : "";
+  updateActivityFilters();
+  renderActivity();
+  renderManagement();
+});
+
+on("activityToWeekSelect", "change", () => {
+  state.selectedActivityToWeek = $("activityToWeekSelect") ? $("activityToWeekSelect").value : "";
+  updateActivityFilters();
+  renderActivity();
+  renderManagement();
+});
+
+on("overviewDepartmentSelect", "change", () => {
+  state.selectedOverviewDepartment = $("overviewDepartmentSelect") ? $("overviewDepartmentSelect").value : "all";
+  renderOverview();
+});
+
+on("sourcingWeekModeSelect", "change", () => {
+  state.selectedSourcingWeekMode = $("sourcingWeekModeSelect") ? $("sourcingWeekModeSelect").value : "rolling";
+  updateSourcingWeekModeUI();
+  updateSourcingFilters();
+  renderSourcing();
+});
+
+on("sourcingWeekSelect", "change", () => {
+  state.selectedSourcingWeek = $("sourcingWeekSelect") ? $("sourcingWeekSelect").value : "";
+  updateSourcingFilters();
+  renderSourcing();
+});
+
+on("sourcingFromWeekSelect", "change", () => {
+  state.selectedSourcingFromWeek = $("sourcingFromWeekSelect") ? $("sourcingFromWeekSelect").value : "";
+  updateSourcingFilters();
+  renderSourcing();
+});
+
+on("sourcingToWeekSelect", "change", () => {
+  state.selectedSourcingToWeek = $("sourcingToWeekSelect") ? $("sourcingToWeekSelect").value : "";
+  updateSourcingFilters();
+  renderSourcing();
+});
+
+on("activityRoleSelect", "change", handleActivityRoleChange);
+on("activityRecruiterSelect", "change", handleActivityRecruiterChange);
+on("sourcingRoleSelect", "change", handleSourcingRoleChange);
+on("sourcingRecruiterSelect", "change", handleSourcingRecruiterChange);
 on("managementWeekSelect", "change", handleManagementWeekChange);
 on("managementQuarterSelect", "change", handleManagementQuarterChange);
 
-// NEW: Forecast role selector
 on("managementForecastRoleSelect", "change", () => {
   state.selectedForecastRole = $("managementForecastRoleSelect") ? $("managementForecastRoleSelect").value : "all";
   renderManagement();
