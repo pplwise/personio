@@ -42,7 +42,7 @@
           <button class="tab" data-tab="pipeline" type="button">Pipeline</button>
           <button class="tab" data-tab="activity" type="button">Activity</button>
           <button class="tab" data-tab="sourcing" type="button">Sourcing</button>
-<button class="tab" data-tab="hires" type="button">Hires & KPIs</button>
+          <button class="tab" data-tab="hires" type="button">Hires & KPIs</button>
         </nav>
 
         <section id="overview" class="panel active">
@@ -96,47 +96,22 @@
             <div><h2>Pipeline</h2></div>
 
             <div class="filters">
-            <label>
-  <span>Week</span>
-  <select id="activityWeekModeSelect"></select>
-</label>
+              <label>
+                <span>Week</span>
+                <select id="pipelineWeekSelect"></select>
+              </label>
 
-<div class="filters">
-  <label>
-    <span>Week</span>
-    <select id="activityWeekModeSelect"></select>
-  </label>
+              <label>
+                <span>Recruiter</span>
+                <select id="pipelineRecruiterSelect"></select>
+              </label>
 
-  <label id="activityWeekSingleWrap">
-    <span>KW</span>
-    <select id="activityWeekSelect"></select>
-  </label>
-
-  <label id="activityWeekFromWrap" class="hidden">
-    <span>From KW</span>
-    <select id="activityFromWeekSelect"></select>
-  </label>
-
-  <label id="activityWeekToWrap" class="hidden">
-    <span>To KW</span>
-    <select id="activityToWeekSelect"></select>
-  </label>
-
-  <label>
-    <span>Department</span>
-    <select id="activityDepartmentSelect"></select>
-  </label>
-
-  <label>
-    <span>Role</span>
-    <select id="activityRoleSelect"></select>
-  </label>
-
-  <label>
-    <span>Recruiter</span>
-    <select id="activityRecruiterSelect"></select>
-  </label>
-</div>
+              <label>
+                <span>Department</span>
+                <select id="pipelineDepartmentSelect"></select>
+              </label>
+            </div>
+          </div>
 
           <div class="card">
             <div class="card-head">
@@ -161,41 +136,42 @@
             <div><h2>Activity</h2></div>
 
             <div class="filters">
-  <label>
-    <span>Week</span>
-    <select id="sourcingWeekModeSelect"></select>
-  </label>
+              <label>
+                <span>Week</span>
+                <select id="activityWeekModeSelect"></select>
+              </label>
 
-  <label id="sourcingWeekSingleWrap">
-    <span>KW</span>
-    <select id="sourcingWeekSelect"></select>
-  </label>
+              <label id="activityWeekSingleWrap">
+                <span>KW</span>
+                <select id="activityWeekSelect"></select>
+              </label>
 
-  <label id="sourcingWeekFromWrap" class="hidden">
-    <span>From KW</span>
-    <select id="sourcingFromWeekSelect"></select>
-  </label>
+              <label id="activityWeekFromWrap" class="hidden">
+                <span>From KW</span>
+                <select id="activityFromWeekSelect"></select>
+              </label>
 
-  <label id="sourcingWeekToWrap" class="hidden">
-    <span>To KW</span>
-    <select id="sourcingToWeekSelect"></select>
-  </label>
+              <label id="activityWeekToWrap" class="hidden">
+                <span>To KW</span>
+                <select id="activityToWeekSelect"></select>
+              </label>
 
-  <label>
-    <span>Department</span>
-    <select id="sourcingDepartmentSelect"></select>
-  </label>
+              <label>
+                <span>Department</span>
+                <select id="activityDepartmentSelect"></select>
+              </label>
 
-  <label>
-    <span>Role</span>
-    <select id="sourcingRoleSelect"></select>
-  </label>
+              <label>
+                <span>Role</span>
+                <select id="activityRoleSelect"></select>
+              </label>
 
-  <label>
-    <span>Recruiter</span>
-    <select id="sourcingRecruiterSelect"></select>
-  </label>
-</div>
+              <label>
+                <span>Recruiter</span>
+                <select id="activityRecruiterSelect"></select>
+              </label>
+            </div>
+          </div>
 
           <div class="card">
             <div class="card-head">
@@ -218,7 +194,22 @@
             <div class="filters">
               <label>
                 <span>Week</span>
+                <select id="sourcingWeekModeSelect"></select>
+              </label>
+
+              <label id="sourcingWeekSingleWrap">
+                <span>KW</span>
                 <select id="sourcingWeekSelect"></select>
+              </label>
+
+              <label id="sourcingWeekFromWrap" class="hidden">
+                <span>From KW</span>
+                <select id="sourcingFromWeekSelect"></select>
+              </label>
+
+              <label id="sourcingWeekToWrap" class="hidden">
+                <span>To KW</span>
+                <select id="sourcingToWeekSelect"></select>
               </label>
 
               <label>
