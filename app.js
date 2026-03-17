@@ -2120,12 +2120,16 @@ function renderManagementRecruiters({ weeklyRows }) {
   empty.classList.add("hidden");
 
   rowsOut.forEach(([recruiter, data]) => {
-    const weeksSet = weekCountByRecruiter.get(recruiter) || new Set();
-    const weeksCount = weeksSet.size || 0;
-    const avgStep1 = weeksCount > 0 ? data.step1 / weeksCount : null;
-    const utilizationBase = avgStep1 || 0;
-    const utilization = Math.round(Math.max(0, Math.min(100, (utilizationBase / 20) * 100)));
-    const barWidth = `${Math.max(0, Math.min(100, utilization))}%`;
+   const weeksSet = weekCountByRecruiter.get(recruiter) || new Set();
+const weeksCount = weeksSet.size || 0;
+const avgStep1 = weeksCount > 0 ? data.step1 / weeksCount : null;
+
+// 15 Step1 screens = 100%
+const utilizationBase = avgStep1 || 0;
+const utilization = Math.round((utilizationBase / 15) * 100);
+
+// Bar can still be visually capped, but displayed % is unlimited
+const barWidth = `${Math.max(0, Math.min(100, utilization))}%`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
