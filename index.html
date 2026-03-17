@@ -312,15 +312,27 @@
         </div>
 
         <div class="card">
-          <div class="card-head" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px;">
+          <div class="card-head" style="display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;">
             <div>
               <h3>Hiring Forecast</h3>
             </div>
 
-            <label style="min-width:260px;">
-              <span class="muted small">Role</span>
-              <select id="managementForecastRoleSelect"></select>
-            </label>
+            <div class="filters">
+              <label>
+                <span>Role</span>
+                <select id="managementForecastRoleSelect"></select>
+              </label>
+
+              <label>
+                <span>Recruiter</span>
+                <select id="managementForecastRecruiterSelect"></select>
+              </label>
+
+              <label>
+                <span>Department</span>
+                <select id="managementForecastDepartmentSelect"></select>
+              </label>
+            </div>
           </div>
 
           <div id="managementForecast"></div>
