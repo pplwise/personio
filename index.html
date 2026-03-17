@@ -254,46 +254,66 @@
         </section>
 
         <section id="hires" class="panel">
-          <div class="panel-head">
-            <div>
-              <h2>Hires & KPIs</h2>
-            </div>
-          </div>
+  <div id="hiresLock" class="card">
+    <div class="card-head">
+      <h3>Protected Content</h3>
+    </div>
 
-          <div id="hiresKpis" class="kpi-grid"></div>
+    <div style="padding:24px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <input
+        id="hiresPasswordInput"
+        type="password"
+        placeholder="Enter password"
+        style="padding:10px 12px; border-radius:10px; border:1px solid #d8d8d8; min-width:220px;"
+      />
+      <button id="hiresUnlockBtn" class="btn" type="button">Unlock</button>
+    </div>
 
-          <div class="card">
-            <div class="card-head">
-              <h3>Hires</h3>
-            </div>
+    <div id="hiresErrorMsg" class="muted small" style="padding:0 24px 24px; color:#b00020;"></div>
+  </div>
 
-            <div id="hiresEmpty" class="placeholder hidden">No hire data yet.</div>
+  <div id="hiresContent" class="hidden">
+    <div class="panel-head">
+      <div>
+        <h2>Hires & KPIs</h2>
+      </div>
+    </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Role</th>
-                    <th>First Name</th>
-                    <th>Last Name</th>
-                    <th>Source</th>
-                    <th>Salary</th>
-                    <th>Live Date</th>
-                    <th>1st Contact</th>
-                    <th>Signature Date</th>
-                    <th>Start Date</th>
-                    <th class="num">TTH</th>
-                    <th class="num">TTF</th>
-                    <th class="num">Days in Process</th>
-                  </tr>
-                </thead>
-                <tbody id="hiresTable"></tbody>
-              </table>
-            </div>
-          </div>
+    <div id="hiresKpis" class="kpi-grid"></div>
 
-          <div id="hiresError" class="error hidden"></div>
-        </section>
+    <div class="card">
+      <div class="card-head">
+        <h3>Hires</h3>
+      </div>
+
+      <div id="hiresEmpty" class="placeholder hidden">No hire data yet.</div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>First Name</th>
+              <th>Last Name</th>
+              <th>Source</th>
+              <th>Salary</th>
+              <th>Live Date</th>
+              <th>1st Contact</th>
+              <th>Signature Date</th>
+              <th>Start Date</th>
+              <th class="num">TTH</th>
+              <th class="num">TTF</th>
+              <th class="num">Days in Process</th>
+            </tr>
+          </thead>
+          <tbody id="hiresTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="hiresError" class="error hidden"></div>
+  </div>
+</section>
       </section>
 
       <section id="managementView" class="hidden">
