@@ -2051,8 +2051,8 @@ function renderHires() {
 function renderManagement() {
   const overviewRows = state.allOverviewRows || [];
   const hiredRows = state.hiredRows || [];
-  const weeklyRows = state.pipelineWeeklyRows || [];
-  const inventoryRows = state.pipelineInventoryRows || [];
+ const weeklyRows = state.allPipelineWeeklyRows || [];
+const inventoryRows = state.allPipelineInventoryRows || [];
   const weeklyUpdatesRows = state.weeklyUpdatesRows || [];
 
   const selectedActivityWeek = state.selectedActivityWeek || "";
