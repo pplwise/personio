@@ -1254,35 +1254,61 @@ function activateTab(tabId) {
 function initTabs() {
   const tabs = document.querySelectorAll(".tab");
 
-  tabs.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.tab || "overview";
-      window.location.hash = id;
-      activateTab(id);
+ tabs.forEach(btn => {
+  btn.addEventListener("click", () => {
+    const id = btn.dataset.tab || "overview";
 
-      if (id === "hires") {
-        renderHires();
+    if (id === "hires") {
+      const unlocked = localStorage.getItem(HIRES_UNLOCK_KEY) === "1";
+      if (!unlocked) {
+        window.location.hash = id;
+        activateTab(id);
+        updateHiresLockUI();
+        return;
       }
-    });
-  });
+    }
 
-  window.addEventListener("hashchange", () => {
-    const id = window.location.hash.replace("#", "") || "overview";
+    window.location.hash = id;
     activateTab(id);
 
     if (id === "hires") {
       renderHires();
     }
   });
+});
+
+  window.addEventListener("hashchange", () => {
+  const id = window.location.hash.replace("#", "") || "overview";
+
+  if (id === "hires") {
+    const unlocked = localStorage.getItem(HIRES_UNLOCK_KEY) === "1";
+    activateTab(id);
+    if (!unlocked) {
+      updateHiresLockUI();
+      return;
+    }
+    renderHires();
+    return;
+  }
+
+  activateTab(id);
+});
 
 const initialId =
   window.location.hash.replace("#", "") ||
   localStorage.getItem(TAB_STORAGE_KEY) ||
-  "overview";  activateTab(initialId);
+  "overview";
 
-  if (initialId === "hires") {
+activateTab(initialId);
+
+if (initialId === "hires") {
+  const unlocked = localStorage.getItem(HIRES_UNLOCK_KEY) === "1";
+  if (!unlocked) {
+    updateHiresLockUI();
+  } else {
     renderHires();
   }
+}
 }
 
  /* ---------------- RENDER: OVERVIEW ---------------- */
@@ -1920,6 +1946,36 @@ function average(values) {
   return values.reduce((s, v) => s + v, 0) / values.length;
 }
 
+function updateHiresLockUI() {
+  const unlocked = localStorage.getItem(HIRES_UNLOCK_KEY) === "1";
+
+  const lock = $("hiresLock");
+  const content = $("hiresContent");
+
+  if (!lock || !content) return;
+
+  lock.classList.toggle("hidden", unlocked);
+  content.classList.toggle("hidden", !unlocked);
+}
+
+function unlockHiresWithPassword() {
+  const input = $("hiresPasswordInput");
+  const error = $("hiresErrorMsg");
+
+  if (!input) return;
+
+  const value = input.value || "";
+
+  if (value === HIRES_PASSWORD) {
+    localStorage.setItem(HIRES_UNLOCK_KEY, "1");
+    if (error) error.textContent = "";
+    updateHiresLockUI();
+    renderHires();
+  } else {
+    if (error) error.textContent = "Incorrect password";
+  }
+}
+  
 function renderHires() {
   const rows = state.hiredRows || [];
 
@@ -3084,6 +3140,10 @@ on("departmentSelectTop", "change", () => handleDepartmentChange("departmentSele
 on("pipelineDepartmentSelect", "change", () => handleDepartmentChange("pipelineDepartmentSelect"));
 on("activityDepartmentSelect", "change", () => handleDepartmentChange("activityDepartmentSelect"));
 on("sourcingDepartmentSelect", "change", () => handleDepartmentChange("sourcingDepartmentSelect"));
+  on("hiresUnlockBtn", "click", unlockHiresWithPassword);
+on("hiresPasswordInput", "keydown", (e) => {
+  if (e.key === "Enter") unlockHiresWithPassword();
+});
 
   refreshAll();
   setInterval(refreshAll, 60000);
