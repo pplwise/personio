@@ -2277,6 +2277,7 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
   recruiterSelect.value = state.selectedForecastRecruiter;
   departmentSelect.value = state.selectedForecastDepartment;
 
+  // Step 1 = rolling 4-week activity from pipelineWeekly
   const rollingKeys = new Set(getRollingWeekKeys(invWeekKey, 4));
   const step1RollingByRole = new Map();
 
@@ -2298,25 +2299,13 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     step1RollingByRole.set(role, (step1RollingByRole.get(role) || 0) + c);
   });
 
+  // Finals + Offers = current inventory snapshot for invWeekKey
   function stageBucket(stageRaw) {
     const s = normalizeStageValue(stageRaw);
     const collapsed = s.replace(/_/g, "");
 
     if (s.includes("offer")) return "offer";
     if (s.includes("final")) return "final";
-
-    if (
-      collapsed === "step3" ||
-      s.includes("step_3") ||
-      s.includes("step3") ||
-      (s.includes("technical") && s.includes("interview")) ||
-      (s.includes("tech") && s.includes("interview")) ||
-      s.includes("coding") ||
-      s.includes("assignment") ||
-      s.includes("takehome") ||
-      s.includes("case_study")
-    ) return "step3";
-
     if (collapsed === "step1" || s.includes("first_interview") || s.includes("1st_interview")) return "step1";
 
     return "other";
@@ -2360,11 +2349,10 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     const bucket = stageBucket(stageRaw);
     const c = num(getField(r, ["count"]) || r.count);
 
-    if (!aggByRole.has(role)) aggByRole.set(role, { step1: 0, step3: 0, final: 0, offer: 0 });
+    if (!aggByRole.has(role)) aggByRole.set(role, { step1: 0, final: 0, offer: 0 });
     const a = aggByRole.get(role);
 
     if (bucket === "step1") a.step1 += c;
-    else if (bucket === "step3") a.step3 += c;
     else if (bucket === "final") a.final += c;
     else if (bucket === "offer") a.offer += c;
   });
@@ -2378,9 +2366,9 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
     const role = String(getField(r, ["role"]) || "").trim();
     if (!role || seen.has(role)) return;
 
-    const a = aggByRole.get(role) || { step1: 0, step3: 0, final: 0, offer: 0 };
+    const a = aggByRole.get(role) || { step1: 0, final: 0, offer: 0 };
     const rollingStep1 = num(step1RollingByRole.get(role) || 0);
-    const hasData = rollingStep1 > 0 || a.step3 > 0 || a.final > 0 || a.offer > 0;
+    const hasData = rollingStep1 > 0 || a.final > 0 || a.offer > 0;
 
     if (!shouldShowRoleOutsideOverview(role, hasData)) return;
 
@@ -2429,37 +2417,42 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
 
   function computeForRole(role) {
     const remaining = remainingOpeningsByRole[role] !== undefined ? remainingOpeningsByRole[role] : 0;
-    const a = aggByRole.get(role) || { step1: 0, step3: 0, final: 0, offer: 0 };
+    const a = aggByRole.get(role) || { step1: 0, final: 0, offer: 0 };
     const rollingStep1 = num(step1RollingByRole.get(role) || 0);
 
+    // 25 Step 1 interviews = 1 expected hire
     const expectedFromStep1 = rollingStep1 / 25;
-    const expectedRaw = Math.max(
-      num(a.offer),
-      num(a.final) * 0.5,
-      num(a.step3) / 10,
-      expectedFromStep1
-    );
+    const expectedFromFinals = num(a.final) * 0.5;
+    const expectedFromOffers = num(a.offer);
+
+    // Weighted combination:
+    // - offers count fully
+    // - finals count strongly, but not fully
+    // - step1 counts as top-of-funnel potential
+    const expectedRaw =
+      expectedFromOffers +
+      (expectedFromFinals * 0.75) +
+      (expectedFromStep1 * 0.5);
 
     const expected = Math.min(remaining, expectedRaw);
 
     let conf = 0.07;
-    const anyPipeline = rollingStep1 > 0 || a.step3 > 0 || a.final > 0 || a.offer > 0;
+    const anyPipeline = rollingStep1 > 0 || a.final > 0 || a.offer > 0;
 
-    if (a.offer > 0) conf = 0.95;
-    else if (a.final >= 2) conf = 0.95;
-    else if (a.final >= 1) conf = 0.90;
-    else if (a.step3 >= 10) conf = 0.90;
-    else if (a.step3 >= 5) conf = 0.80;
-    else if (rollingStep1 >= 25) conf = 0.95;
-    else if (rollingStep1 >= 20) conf = 0.90;
-    else if (rollingStep1 >= 15) conf = 0.80;
-    else if (rollingStep1 >= 10) conf = 0.70;
-    else if (rollingStep1 >= 5) conf = 0.55;
-    else if (anyPipeline) conf = 0.40;
+    if (a.offer >= remaining && remaining > 0) conf = 0.98;
+    else if (a.offer > 0) conf = 0.95;
+    else if (a.final >= Math.max(2, remaining)) conf = 0.92;
+    else if (a.final >= 2) conf = 0.88;
+    else if (a.final >= 1) conf = 0.78;
+    else if (rollingStep1 >= 25) conf = 0.85;
+    else if (rollingStep1 >= 20) conf = 0.78;
+    else if (rollingStep1 >= 15) conf = 0.70;
+    else if (rollingStep1 >= 10) conf = 0.58;
+    else if (rollingStep1 >= 5) conf = 0.42;
+    else if (anyPipeline) conf = 0.30;
 
     return {
       step1: rollingStep1,
-      step3: a.step3,
       finals: a.final,
       offers: a.offer,
       expected,
@@ -2468,12 +2461,11 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
   }
 
   function computeAll() {
-    const out = { step1: 0, step3: 0, finals: 0, offers: 0, expected: 0, conf: null };
+    const out = { step1: 0, finals: 0, offers: 0, expected: 0, conf: null };
 
     roleList.forEach(role => {
       const r = computeForRole(role);
       out.step1 += r.step1;
-      out.step3 += r.step3;
       out.finals += r.finals;
       out.offers += r.offers;
       out.expected += r.expected;
@@ -2504,7 +2496,6 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
           <tr>
             <th>Scope</th>
             <th class="num">Step1 (4W)</th>
-            <th class="num">Step3 (KW)</th>
             <th class="num">Finals (KW)</th>
             <th class="num">Offers (KW)</th>
             <th class="num">Expected hires</th>
@@ -2515,7 +2506,6 @@ function renderManagementForecast({ inventoryRows, overviewRows, hiredRows, week
           <tr>
             <td>${scope}</td>
             <td class="num ${getNumberClass(result.step1)}">${formatNumber(result.step1)}</td>
-            <td class="num ${getNumberClass(result.step3)}">${formatNumber(result.step3)}</td>
             <td class="num ${getNumberClass(result.finals)}">${formatNumber(result.finals)}</td>
             <td class="num ${getNumberClass(result.offers)}">${formatNumber(result.offers)}</td>
             <td class="num ${getNumberClass(result.expected)}">~${Number(result.expected).toFixed(1)}</td>
