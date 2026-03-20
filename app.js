@@ -525,10 +525,9 @@ function applyDepartmentSelection() {
     const weeksInPrevYear = getISOWeeksInYear(prevYear);
     return `${prevYear}-KW${String(weeksInPrevYear).padStart(2, "0")}`;
   }
-  function getHealthWidgetWeekKey() {
-  // always show previous week in Role Health widget
-  const prev = getPreviousWeekKey(TODAY_WEEK_KEY);
-  return prev || TODAY_WEEK_KEY;
+function getHealthWidgetWeekKey() {
+  // always show current week in Role Health widget
+  return TODAY_WEEK_KEY;
 }
 
   function getRollingWeekKeys(endWeekKey, weeks = 4) {
