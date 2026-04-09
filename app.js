@@ -2072,31 +2072,17 @@ function renderHires() {
 /* ---------------- RENDER: MANAGEMENT ---------------- */
 
 function renderManagement() {
-  let overviewRows = state.allOverviewRows || [];
+  const overviewRows = state.allOverviewRows || [];
   const hiredRows = state.hiredRows || [];
   const weeklyRows = state.allPipelineWeeklyRows || [];
-  const inventoryRows = state.pipelineInventoryRows || [];
+  const inventoryRows = state.allPipelineInventoryRows || [];
   const weeklyUpdatesRows = state.weeklyUpdatesRows || [];
 
-  // exakt wie im Overview: optionaler Overview-Department-Filter
-  const selectedOverviewDept = state.selectedOverviewDepartment || "all";
-  if (selectedOverviewDept !== "all") {
-    const want = normalizeDepartmentValue(selectedOverviewDept).toLowerCase();
-    overviewRows = overviewRows.filter(r => {
-      const dept = normalizeDepartmentValue(getField(r, ["department"]) || r.department).toLowerCase();
-      return dept === want;
-    });
-  }
+  const selectedRole = state.selectedActivityRole || "all";
 
-  // exakt wie im Overview: aktuelle Health-Week aus demselben Helper
-  const healthWeekKey = getHealthWidgetWeekKey();
-  const healthByRole = getHealthByRoleFromInventory(
-    inventoryRows,
-    healthWeekKey
-  );
-
-  let filledPositions = 0;
   const hiresByRole = {};
+  let filledPositions = 0;
+
   (hiredRows || []).forEach(r => {
     const role = getField(r, ["role"]);
     const signatureDate = getField(r, ["signature_date", "signature date"]);
@@ -2107,11 +2093,13 @@ function renderManagement() {
     filledPositions += 1;
   });
 
-  function getRemainingOpenings(row) {
-    const role = getField(row, ["role"]);
-    const baseOpenings = num(getField(row, ["openings"]));
-    return Math.max(0, baseOpenings - (hiresByRole[role] || 0));
-  }
+  const remainingOpeningsByRole = {};
+  (overviewRows || []).forEach(r => {
+    const role = String(getField(r, ["role"]) || "").trim();
+    if (!role) return;
+    const baseOpenings = num(getField(r, ["openings"]));
+    remainingOpeningsByRole[role] = Math.max(0, baseOpenings - (hiresByRole[role] || 0));
+  });
 
   const onHoldRoles = overviewRows.filter(r => {
     const status = normalizeHeader(getField(r, ["status"]));
@@ -2121,15 +2109,16 @@ function renderManagement() {
   const openRoles = overviewRows.filter(r => {
     const status = normalizeHeader(getField(r, ["status"]));
     if (status !== "open") return false;
-    return getRemainingOpenings(r) > 0;
+    const role = getField(r, ["role"]);
+    const remaining = remainingOpeningsByRole[role] ?? num(getField(r, ["openings"]));
+    return remaining > 0;
   }).length;
 
   const totalOpenings = overviewRows.reduce((sum, r) => {
-    return sum + getRemainingOpenings(r);
+    const role = getField(r, ["role"]);
+    const remaining = remainingOpeningsByRole[role] ?? num(getField(r, ["openings"]));
+    return sum + remaining;
   }, 0);
-
-  // exakt wie im Overview: nur Rollen mit remaining openings zählen
-  const visibleRows = overviewRows.filter(r => getRemainingOpenings(r) > 0);
 
   const kpisEl = $("managementKpis");
   if (kpisEl) {
@@ -2141,14 +2130,27 @@ function renderManagement() {
     `;
   }
 
-  // exakt wie im Overview
+  // IDENTICAL TO OVERVIEW
+  const healthWeekKey = getHealthWidgetWeekKey();
+  const healthByRole = getHealthByRoleFromInventory(
+    state.pipelineInventoryRows,
+    healthWeekKey
+  );
+
+  const visibleRows = overviewRows.filter(r => {
+    const role = getField(r, ["role"]);
+    const baseOpenings = num(getField(r, ["openings"]));
+    const remaining = Math.max(0, baseOpenings - (hiresByRole[role] || 0));
+    return remaining > 0;
+  });
+
   const counts = { healthy: 0, warning: 0, critical: 0 };
   visibleRows.forEach(r => {
     const role = getField(r, ["role"]);
-    const h = healthByRole[role] || "unknown";
-    if (h === "healthy") counts.healthy += 1;
-    else if (h === "warning") counts.warning += 1;
-    else if (h === "critical") counts.critical += 1;
+    const value = healthByRole[role] || "unknown";
+    if (value === "healthy") counts.healthy += 1;
+    else if (value === "warning") counts.warning += 1;
+    else if (value === "critical") counts.critical += 1;
   });
 
   const hsEl = $("managementHealthSummary");
@@ -2161,10 +2163,7 @@ function renderManagement() {
   }
 
   renderManagementRecruiters({ weeklyRows });
-  renderManagementWeeklyUpdates({
-    weeklyUpdatesRows,
-    selectedRole: state.selectedActivityRole || "all"
-  });
+  renderManagementWeeklyUpdates({ weeklyUpdatesRows, selectedRole });
   renderManagementForecast({ inventoryRows, overviewRows, hiredRows, weeklyRows });
 }
 
