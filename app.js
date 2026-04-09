@@ -1425,6 +1425,23 @@ function renderOverview() {
   });
 }
 
+  function syncManagementHealthFromOverview() {
+  const overviewEl = $("overviewHealthSummary");
+  const managementEl = $("managementHealthSummary");
+
+  if (!managementEl) return;
+
+  if (overviewEl && overviewEl.innerHTML.trim() !== "") {
+    managementEl.innerHTML = overviewEl.innerHTML;
+  } else {
+    managementEl.innerHTML = `
+      <div class="health-badge good"><span class="health-dot good"></span><span>0 Healthy</span></div>
+      <div class="health-badge warn"><span class="health-dot warn"></span><span>0 Attention</span></div>
+      <div class="health-badge bad"><span class="health-dot bad"></span><span>0 Action</span></div>
+    `;
+  }
+}
+
 /* ---------------- RENDER: PIPELINE ---------------- */
 
 function getStagesForInventory(invRows, selectedWeekKey, stageOrder) {
@@ -2129,19 +2146,7 @@ function renderManagement() {
     `;
   }
 
-  // 1:1 COPY FROM OVERVIEW
-  const overviewHealthSummary = $("overviewHealthSummary");
-  const managementHealthSummary = $("managementHealthSummary");
-
-  if (managementHealthSummary) {
-    managementHealthSummary.innerHTML = overviewHealthSummary
-      ? overviewHealthSummary.innerHTML
-      : `
-        <div class="health-badge good"><span class="health-dot good"></span><span>0 Healthy</span></div>
-        <div class="health-badge warn"><span class="health-dot warn"></span><span>0 Attention</span></div>
-        <div class="health-badge bad"><span class="health-dot bad"></span><span>0 Action</span></div>
-      `;
-  }
+   syncManagementHealthFromOverview();
 
   renderManagementRecruiters({ weeklyRows });
   renderManagementWeeklyUpdates({ weeklyUpdatesRows, selectedRole: state.selectedActivityRole || "all" });
@@ -2836,11 +2841,16 @@ function renderAll() {
   if (!state.selectedDepartment) return;
 
   renderOverview();
+  syncManagementHealthFromOverview();
+
   renderPipeline();
   renderActivity();
   renderSourcing();
   renderHires();
   renderManagement();
+
+  // nochmal nach renderManagement, damit wirklich die gleiche HTML wie im Overview steht
+  syncManagementHealthFromOverview();
 }
 
 /* ---------------- MAIN LOAD ---------------- */
