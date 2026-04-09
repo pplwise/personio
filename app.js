@@ -1425,23 +1425,6 @@ function renderOverview() {
   });
 }
 
-  function syncManagementHealthFromOverview() {
-  const overviewEl = $("overviewHealthSummary");
-  const managementEl = $("managementHealthSummary");
-
-  if (!managementEl) return;
-
-  if (overviewEl && overviewEl.innerHTML.trim() !== "") {
-    managementEl.innerHTML = overviewEl.innerHTML;
-  } else {
-    managementEl.innerHTML = `
-      <div class="health-badge good"><span class="health-dot good"></span><span>0 Healthy</span></div>
-      <div class="health-badge warn"><span class="health-dot warn"></span><span>0 Attention</span></div>
-      <div class="health-badge bad"><span class="health-dot bad"></span><span>0 Action</span></div>
-    `;
-  }
-}
-
 /* ---------------- RENDER: PIPELINE ---------------- */
 
 function getStagesForInventory(invRows, selectedWeekKey, stageOrder) {
@@ -1727,46 +1710,22 @@ function renderActivity() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // --- rows per role ---
-const totals = new Map(); // stage -> sum
+  roles.forEach(role => {
+    const sm = countsByRole.get(role) || new Map();
+    const stageCells = stages.map(s => {
+      const value = sm.get(s) || 0;
+      return `<td class="num ${getNumberClass(value)}">${formatNumber(value)}</td>`;
+    }).join("");
 
-roles.forEach(role => {
-  const sm = countsByRole.get(role) || new Map();
-
-  const stageCells = stages.map(s => {
-    const value = sm.get(s) || 0;
-
-    // accumulate totals
-    totals.set(s, (totals.get(s) || 0) + value);
-
-    return `<td class="num ${getNumberClass(value)}">${formatNumber(value)}</td>`;
-  }).join("");
-
-  const tr = document.createElement("tr");
-  tr.innerHTML = `
-    <td>${role}</td>
-    ${stageCells}
-  `;
-  tbody.appendChild(tr);
-});
-
-// --- TOTAL ROW ---
-if (roles.length) {
-  const totalCells = stages.map(s => {
-    const value = totals.get(s) || 0;
-    return `<td class="num ${getNumberClass(value)}"><strong>${formatNumber(value)}</strong></td>`;
-  }).join("");
-
-  const trTotal = document.createElement("tr");
-  trTotal.classList.add("total-row"); // optional styling
-  trTotal.innerHTML = `
-    <td><strong>Total</strong></td>
-    ${totalCells}
-  `;
-
-  tbody.appendChild(trTotal);
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${role}</td>
+      ${stageCells}
+    `;
+    tbody.appendChild(tr);
+  });
 }
-}
+
 /* ---------------- RENDER: SOURCING ---------------- */
 
 function isSourcingWeekInWindow(row) {
@@ -2089,23 +2048,22 @@ function renderHires() {
 /* ---------------- RENDER: MANAGEMENT ---------------- */
 
 function renderManagement() {
+  const overviewRows = state.allOverviewRows || [];
   const hiredRows = state.hiredRows || [];
-  const weeklyRows = state.allPipelineWeeklyRows || [];
-  const inventoryRows = state.pipelineInventoryRows || [];
+ const weeklyRows = state.allPipelineWeeklyRows || [];
+const inventoryRows = state.allPipelineInventoryRows || [];
   const weeklyUpdatesRows = state.weeklyUpdatesRows || [];
 
-  // IDENTISCH ZU OVERVIEW
-  let rows = state.allOverviewRows || [];
+  const selectedActivityWeek = state.selectedActivityWeek || "";
+  const selectedRole = state.selectedActivityRole || "all";
+  const selectedRecruiter = state.selectedActivityRecruiter || "all";
 
-  const selectedOverviewDept = state.selectedOverviewDepartment || "all";
-  if (selectedOverviewDept !== "all") {
-    const want = normalizeDepartmentValue(selectedOverviewDept).toLowerCase();
-    rows = rows.filter(r => {
-      const dept = normalizeDepartmentValue(getField(r, ["department"]) || r.department).toLowerCase();
-      return dept === want;
-    });
-  }
+const healthByRole = getHealthByRoleFromInventory(
+  inventoryRows,
+  state.selectedPipelineWeek || TODAY_WEEK_KEY
+);
 
+  let filledPositions = 0;
   const hiresByRole = {};
   (hiredRows || []).forEach(r => {
     const role = getField(r, ["role"]);
@@ -2114,43 +2072,71 @@ function renderManagement() {
     if (!role) return;
     if (!signatureDate && !startDate) return;
     hiresByRole[role] = (hiresByRole[role] || 0) + 1;
+    filledPositions += 1;
   });
 
-  function getRemainingOpenings(row) {
-    const role = getField(row, ["role"]);
-    const baseOpenings = num(getField(row, ["openings"]));
-    return Math.max(0, baseOpenings - (hiresByRole[role] || 0));
-  }
+  const remainingOpeningsByRole = {};
+  (overviewRows || []).forEach(r => {
+    const role = String(getField(r, ["role"]) || "").trim();
+    if (!role) return;
+    const baseOpenings = num(getField(r, ["openings"]));
+    const remaining = Math.max(0, baseOpenings - (hiresByRole[role] || 0));
+    remainingOpeningsByRole[role] = remaining;
+  });
 
-  const onHoldRoles = rows.filter(r => {
+  const onHoldRoles = overviewRows.filter(r => {
     const status = normalizeHeader(getField(r, ["status"]));
     return status === "on_hold" || status === "onhold" || status.includes("hold");
   }).length;
 
-  const openRoles = rows.filter(r => {
+  const openRoles = overviewRows.filter(r => {
     const status = normalizeHeader(getField(r, ["status"]));
     if (status !== "open") return false;
-    return getRemainingOpenings(r) > 0;
+    const role = getField(r, ["role"]);
+    const remaining = remainingOpeningsByRole[role] ?? num(getField(r, ["openings"]));
+    return remaining > 0;
   }).length;
 
-  const filledPositions = Object.values(hiresByRole).reduce((a, b) => a + b, 0);
-  const totalOpenings = rows.reduce((sum, r) => sum + getRemainingOpenings(r), 0);
+  const totalOpenings = overviewRows.reduce((sum, r) => {
+    const status = normalizeHeader(getField(r, ["status"]));
+    if (!(status === "open" || status === "on_hold" || status === "onhold" || status.includes("hold"))) return sum;
+    const role = getField(r, ["role"]);
+    const remaining = remainingOpeningsByRole[role] ?? num(getField(r, ["openings"]));
+    return sum + remaining;
+  }, 0);
 
   const kpisEl = $("managementKpis");
   if (kpisEl) {
     kpisEl.innerHTML = `
       <div class="kpi"><div class="label">Open Roles</div><div class="value">${formatNumber(openRoles)}</div></div>
       <div class="kpi"><div class="label">On hold</div><div class="value">${formatNumber(onHoldRoles)}</div></div>
-      <div class="kpi"><div class="label">Filled Positions</div><div class="value">${formatNumber(filledPositions)}</div><div class="sub">All time</div></div>
+      <div class="kpi"><div class="label">Filled Positions</div><div class="value">${formatNumber(filledPositions)}</div><div class="sub">All time${hiredRows.length ? "" : " · No hire data yet."}</div></div>
       <div class="kpi"><div class="label">Total Openings</div><div class="value">${formatNumber(totalOpenings)}</div></div>
     `;
   }
 
-   syncManagementHealthFromOverview();
+  const counts = { healthy: 0, warning: 0, critical: 0 };
+  overviewRows.forEach(r => {
+    const role = getField(r, ["role"]);
+    const value = healthByRole[role] || "";
+    if (value === "healthy") counts.healthy += 1;
+    else if (value === "warning") counts.warning += 1;
+    else if (value === "critical") counts.critical += 1;
+  });
+
+  const hsEl = $("managementHealthSummary");
+  if (hsEl) {
+    hsEl.innerHTML = `
+      <div class="health-badge good"><span class="health-dot good"></span><span>${counts.healthy} Healthy</span></div>
+      <div class="health-badge warn"><span class="health-dot warn"></span><span>${counts.warning} Attention</span></div>
+      <div class="health-badge bad"><span class="health-dot bad"></span><span>${counts.critical} Action</span></div>
+    `;
+  }
 
   renderManagementRecruiters({ weeklyRows });
-  renderManagementWeeklyUpdates({ weeklyUpdatesRows, selectedRole: state.selectedActivityRole || "all" });
-  renderManagementForecast({ inventoryRows, overviewRows: rows, hiredRows, weeklyRows });
+
+  renderManagementWeeklyUpdates({ weeklyUpdatesRows, selectedRole });
+  renderManagementForecast({ inventoryRows, overviewRows, hiredRows, weeklyRows });
 }
 
 function renderManagementRecruiters({ weeklyRows }) {
@@ -2841,16 +2827,11 @@ function renderAll() {
   if (!state.selectedDepartment) return;
 
   renderOverview();
-  syncManagementHealthFromOverview();
-
   renderPipeline();
   renderActivity();
   renderSourcing();
   renderHires();
   renderManagement();
-
-  // nochmal nach renderManagement, damit wirklich die gleiche HTML wie im Overview steht
-  syncManagementHealthFromOverview();
 }
 
 /* ---------------- MAIN LOAD ---------------- */
