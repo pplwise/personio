@@ -2089,12 +2089,6 @@ function renderManagement() {
     });
   }
 
-  const healthWeekKey = getHealthWidgetWeekKey();
-  const healthByRole = getHealthByRoleFromInventory(
-    state.pipelineInventoryRows,
-    healthWeekKey
-  );
-
   const hiresByRole = {};
   (hiredRows || []).forEach(r => {
     const role = getField(r, ["role"]);
@@ -2135,24 +2129,18 @@ function renderManagement() {
     `;
   }
 
-  const visibleRows = rows.filter(r => getRemainingOpenings(r) > 0);
+  // 1:1 COPY FROM OVERVIEW
+  const overviewHealthSummary = $("overviewHealthSummary");
+  const managementHealthSummary = $("managementHealthSummary");
 
-  const counts = { healthy: 0, warning: 0, critical: 0 };
-  visibleRows.forEach(r => {
-    const role = getField(r, ["role"]);
-    const h = healthByRole[role] || "unknown";
-    if (h === "healthy") counts.healthy += 1;
-    else if (h === "warning") counts.warning += 1;
-    else if (h === "critical") counts.critical += 1;
-  });
-
-  const hsEl = $("managementHealthSummary");
-  if (hsEl) {
-    hsEl.innerHTML = `
-      <div class="health-badge good"><span class="health-dot good"></span><span>${counts.healthy} Healthy</span></div>
-      <div class="health-badge warn"><span class="health-dot warn"></span><span>${counts.warning} Attention</span></div>
-      <div class="health-badge bad"><span class="health-dot bad"></span><span>${counts.critical} Action</span></div>
-    `;
+  if (managementHealthSummary) {
+    managementHealthSummary.innerHTML = overviewHealthSummary
+      ? overviewHealthSummary.innerHTML
+      : `
+        <div class="health-badge good"><span class="health-dot good"></span><span>0 Healthy</span></div>
+        <div class="health-badge warn"><span class="health-dot warn"></span><span>0 Attention</span></div>
+        <div class="health-badge bad"><span class="health-dot bad"></span><span>0 Action</span></div>
+      `;
   }
 
   renderManagementRecruiters({ weeklyRows });
