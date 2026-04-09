@@ -1710,20 +1710,44 @@ function renderActivity() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  roles.forEach(role => {
-    const sm = countsByRole.get(role) || new Map();
-    const stageCells = stages.map(s => {
-      const value = sm.get(s) || 0;
-      return `<td class="num ${getNumberClass(value)}">${formatNumber(value)}</td>`;
-    }).join("");
+  // --- rows per role ---
+const totals = new Map(); // stage -> sum
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${role}</td>
-      ${stageCells}
-    `;
-    tbody.appendChild(tr);
-  });
+roles.forEach(role => {
+  const sm = countsByRole.get(role) || new Map();
+
+  const stageCells = stages.map(s => {
+    const value = sm.get(s) || 0;
+
+    // accumulate totals
+    totals.set(s, (totals.get(s) || 0) + value);
+
+    return `<td class="num ${getNumberClass(value)}">${formatNumber(value)}</td>`;
+  }).join("");
+
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${role}</td>
+    ${stageCells}
+  `;
+  tbody.appendChild(tr);
+});
+
+// --- TOTAL ROW ---
+if (roles.length) {
+  const totalCells = stages.map(s => {
+    const value = totals.get(s) || 0;
+    return `<td class="num ${getNumberClass(value)}"><strong>${formatNumber(value)}</strong></td>`;
+  }).join("");
+
+  const trTotal = document.createElement("tr");
+  trTotal.classList.add("total-row"); // optional styling
+  trTotal.innerHTML = `
+    <td><strong>Total</strong></td>
+    ${totalCells}
+  `;
+
+  tbody.appendChild(trTotal);
 }
 
 /* ---------------- RENDER: SOURCING ---------------- */
@@ -2048,20 +2072,28 @@ function renderHires() {
 /* ---------------- RENDER: MANAGEMENT ---------------- */
 
 function renderManagement() {
-  const overviewRows = state.allOverviewRows || [];
+  let overviewRows = state.allOverviewRows || [];
   const hiredRows = state.hiredRows || [];
- const weeklyRows = state.allPipelineWeeklyRows || [];
-const inventoryRows = state.allPipelineInventoryRows || [];
+  const weeklyRows = state.allPipelineWeeklyRows || [];
+  const inventoryRows = state.pipelineInventoryRows || [];
   const weeklyUpdatesRows = state.weeklyUpdatesRows || [];
 
-  const selectedActivityWeek = state.selectedActivityWeek || "";
-  const selectedRole = state.selectedActivityRole || "all";
-  const selectedRecruiter = state.selectedActivityRecruiter || "all";
+  // exakt wie im Overview: optionaler Overview-Department-Filter
+  const selectedOverviewDept = state.selectedOverviewDepartment || "all";
+  if (selectedOverviewDept !== "all") {
+    const want = normalizeDepartmentValue(selectedOverviewDept).toLowerCase();
+    overviewRows = overviewRows.filter(r => {
+      const dept = normalizeDepartmentValue(getField(r, ["department"]) || r.department).toLowerCase();
+      return dept === want;
+    });
+  }
 
-const healthByRole = getHealthByRoleFromInventory(
-  inventoryRows,
-  state.selectedPipelineWeek || TODAY_WEEK_KEY
-);
+  // exakt wie im Overview: aktuelle Health-Week aus demselben Helper
+  const healthWeekKey = getHealthWidgetWeekKey();
+  const healthByRole = getHealthByRoleFromInventory(
+    inventoryRows,
+    healthWeekKey
+  );
 
   let filledPositions = 0;
   const hiresByRole = {};
@@ -2075,14 +2107,11 @@ const healthByRole = getHealthByRoleFromInventory(
     filledPositions += 1;
   });
 
-  const remainingOpeningsByRole = {};
-  (overviewRows || []).forEach(r => {
-    const role = String(getField(r, ["role"]) || "").trim();
-    if (!role) return;
-    const baseOpenings = num(getField(r, ["openings"]));
-    const remaining = Math.max(0, baseOpenings - (hiresByRole[role] || 0));
-    remainingOpeningsByRole[role] = remaining;
-  });
+  function getRemainingOpenings(row) {
+    const role = getField(row, ["role"]);
+    const baseOpenings = num(getField(row, ["openings"]));
+    return Math.max(0, baseOpenings - (hiresByRole[role] || 0));
+  }
 
   const onHoldRoles = overviewRows.filter(r => {
     const status = normalizeHeader(getField(r, ["status"]));
@@ -2092,18 +2121,15 @@ const healthByRole = getHealthByRoleFromInventory(
   const openRoles = overviewRows.filter(r => {
     const status = normalizeHeader(getField(r, ["status"]));
     if (status !== "open") return false;
-    const role = getField(r, ["role"]);
-    const remaining = remainingOpeningsByRole[role] ?? num(getField(r, ["openings"]));
-    return remaining > 0;
+    return getRemainingOpenings(r) > 0;
   }).length;
 
   const totalOpenings = overviewRows.reduce((sum, r) => {
-    const status = normalizeHeader(getField(r, ["status"]));
-    if (!(status === "open" || status === "on_hold" || status === "onhold" || status.includes("hold"))) return sum;
-    const role = getField(r, ["role"]);
-    const remaining = remainingOpeningsByRole[role] ?? num(getField(r, ["openings"]));
-    return sum + remaining;
+    return sum + getRemainingOpenings(r);
   }, 0);
+
+  // exakt wie im Overview: nur Rollen mit remaining openings zählen
+  const visibleRows = overviewRows.filter(r => getRemainingOpenings(r) > 0);
 
   const kpisEl = $("managementKpis");
   if (kpisEl) {
@@ -2114,6 +2140,33 @@ const healthByRole = getHealthByRoleFromInventory(
       <div class="kpi"><div class="label">Total Openings</div><div class="value">${formatNumber(totalOpenings)}</div></div>
     `;
   }
+
+  // exakt wie im Overview
+  const counts = { healthy: 0, warning: 0, critical: 0 };
+  visibleRows.forEach(r => {
+    const role = getField(r, ["role"]);
+    const h = healthByRole[role] || "unknown";
+    if (h === "healthy") counts.healthy += 1;
+    else if (h === "warning") counts.warning += 1;
+    else if (h === "critical") counts.critical += 1;
+  });
+
+  const hsEl = $("managementHealthSummary");
+  if (hsEl) {
+    hsEl.innerHTML = `
+      <div class="health-badge good"><span class="health-dot good"></span><span>${counts.healthy} Healthy</span></div>
+      <div class="health-badge warn"><span class="health-dot warn"></span><span>${counts.warning} Attention</span></div>
+      <div class="health-badge bad"><span class="health-dot bad"></span><span>${counts.critical} Action</span></div>
+    `;
+  }
+
+  renderManagementRecruiters({ weeklyRows });
+  renderManagementWeeklyUpdates({
+    weeklyUpdatesRows,
+    selectedRole: state.selectedActivityRole || "all"
+  });
+  renderManagementForecast({ inventoryRows, overviewRows, hiredRows, weeklyRows });
+}
 
   const counts = { healthy: 0, warning: 0, critical: 0 };
   overviewRows.forEach(r => {
