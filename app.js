@@ -526,8 +526,8 @@ function applyDepartmentSelection() {
     return `${prevYear}-KW${String(weeksInPrevYear).padStart(2, "0")}`;
   }
 function getHealthWidgetWeekKey() {
-  // always show current week in Role Health widget
-  return TODAY_WEEK_KEY;
+  const prev = getPreviousWeekKey(TODAY_WEEK_KEY);
+  return prev || TODAY_WEEK_KEY;
 }
 
   function getRollingWeekKeys(endWeekKey, weeks = 4) {
@@ -2058,9 +2058,10 @@ const inventoryRows = state.allPipelineInventoryRows || [];
   const selectedRole = state.selectedActivityRole || "all";
   const selectedRecruiter = state.selectedActivityRecruiter || "all";
 
+const healthWeekKey = getHealthWidgetWeekKey();
 const healthByRole = getHealthByRoleFromInventory(
   inventoryRows,
-  state.selectedPipelineWeek || TODAY_WEEK_KEY
+  healthWeekKey
 );
 
   let filledPositions = 0;
